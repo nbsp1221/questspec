@@ -1,0 +1,73 @@
+{
+  "name": "questspec",
+  "version": "0.0.0",
+  "description": "Questbooks as code for Minecraft, with declarative authoring, validation, and version-aware compilation",
+  "keywords": [
+    "cli",
+    "compiler",
+    "declarative",
+    "ftb-quests",
+    "minecraft",
+    "questbook",
+    "static-analysis",
+    "typescript"
+  ],
+  "homepage": "https://github.com/nbsp1221/questspec#readme",
+  "bugs": {
+    "url": "https://github.com/nbsp1221/questspec/issues"
+  },
+  "license": "MIT",
+  "author": "nbsp1221",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nbsp1221/questspec.git"
+  },
+  "bin": {
+    "questspec": "dist/index.mjs"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "dev": "tsdown --watch",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint . && eslint .",
+    "lint:fix": "oxlint --fix . && eslint --fix .",
+    "prepack": "pnpm build",
+    "prepublishOnly": "pnpm check",
+    "questspec": "node src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "cac": "^7.0.0"
+  },
+  "devDependencies": {
+    "@retn0/eslint-config": "^2.1.0",
+    "@retn0/eslint-config-oxlint": "^0.1.2",
+    "@retn0/oxfmt-config": "^0.2.0",
+    "@retn0/oxlint-config": "^2.2.0",
+    "@types/node": "^24.13.3",
+    "eslint": "^10.8.0",
+    "oxfmt": "^0.59.0",
+    "oxlint": "1.73.0",
+    "oxlint-tsgolint": "0.25.0",
+    "tsdown": "^0.22.14",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": "^24.0.0 || >=26.0.0"
+  },
+  "packageManager": "pnpm@11.23.0"
+}
