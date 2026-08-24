@@ -50,7 +50,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "cac": "^7.0.0"
+    "ajv": "^8.20.0",
+    "cac": "^7.0.0",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@retn0/eslint-config": "^2.1.0",
