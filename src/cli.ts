@@ -5,6 +5,7 @@ import { type CAC, cac } from 'cac';
 import pkg from '../package.json' with { type: 'json' };
 import type { Diagnostic } from './diagnostics/diagnostic.ts';
 import type { Questbook } from './ir/questbook.ts';
+import type { YamlSourceMap } from './spec/source-map.ts';
 import { reportDiagnostics } from './diagnostics/reporter.ts';
 import { writeDirectoryAtomic, writeFileSetAtomic } from './filesystem/atomic-output.ts';
 import { readSnbtDirectory } from './filesystem/read-directory.ts';
@@ -21,9 +22,11 @@ import {
   compileFtbQuests2101,
 } from './targets/ftbquests-2101.1.33/encode.ts';
 import { ftbQuests2101Profile } from './targets/ftbquests-2101.1.33/profile.ts';
+import { parseResourceCatalog, validateQuestbookResources } from './validation/resources.ts';
 
 interface CommonOptions {
   json?: boolean;
+  resources?: string;
 }
 
 interface CompileOptions extends CommonOptions {
@@ -48,12 +51,18 @@ export function createCli(): CAC {
   cli
     .command('validate <source>', 'Validate a declarative QuestSpec YAML file')
     .option('--json', 'Write diagnostics as JSON')
+    .option('--resources <catalog>', 'Validate references against an exact-runtime catalog')
     .action(async (source: string, options: CommonOptions) => {
-      const loaded = await loadSource(resolve(source));
-      if (!acceptDiagnostics(loaded.diagnostics, options)) {
+      const sourcePath = resolve(source);
+      const loaded = await loadSource(sourcePath);
+      if (
+        !acceptDiagnostics(loaded.diagnostics, options) ||
+        loaded.questbook === undefined ||
+        !acceptDiagnostics(await resourceDiagnostics(loaded, sourcePath, options), options)
+      ) {
         return;
       }
-      console.log(`Valid: ${resolve(source)}`);
+      console.log(`Valid: ${sourcePath}`);
       console.log(`Target: ${targetLabel()}`);
     });
 
@@ -63,13 +72,18 @@ export function createCli(): CAC {
     .option('--id-map <file>', 'Physical ID map (defaults beside the source)')
     .option('--force', 'Replace an existing output directory')
     .option('--json', 'Write diagnostics as JSON')
+    .option('--resources <catalog>', 'Validate references against an exact-runtime catalog')
     .action(async (source: string, options: CompileOptions) => {
       if (options.output === undefined) {
         throw new Error('questspec compile: --output is required');
       }
       const sourcePath = resolve(source);
       const loaded = await loadSource(sourcePath);
-      if (!acceptDiagnostics(loaded.diagnostics, options) || loaded.questbook === undefined) {
+      if (
+        !acceptDiagnostics(loaded.diagnostics, options) ||
+        loaded.questbook === undefined ||
+        !acceptDiagnostics(await resourceDiagnostics(loaded, sourcePath, options), options)
+      ) {
         return;
       }
       const idMapPath = resolve(options.idMap ?? defaultPhysicalIdMapPath(sourcePath));
@@ -168,11 +182,31 @@ export function createCli(): CAC {
   return cli;
 }
 
-async function loadSource(
-  path: string,
-): Promise<{ diagnostics: Diagnostic[]; questbook?: Questbook }> {
+interface LoadedSource {
+  diagnostics: Diagnostic[];
+  questbook?: Questbook;
+  sourceMap: YamlSourceMap;
+}
+
+async function loadSource(path: string): Promise<LoadedSource> {
   const result = loadQuestbook(await readFile(path, 'utf8'), path);
-  return { diagnostics: result.diagnostics, questbook: result.value };
+  return { diagnostics: result.diagnostics, questbook: result.value, sourceMap: result.sourceMap };
+}
+
+async function resourceDiagnostics(
+  loaded: LoadedSource,
+  sourcePath: string,
+  options: CommonOptions,
+): Promise<Diagnostic[]> {
+  if (options.resources === undefined || loaded.questbook === undefined) {
+    return [];
+  }
+  const catalog = parseResourceCatalog(await readFile(resolve(options.resources), 'utf8'));
+  return validateQuestbookResources(loaded.questbook, catalog).map((diagnostic) => ({
+    ...diagnostic,
+    file: sourcePath,
+    span: loaded.sourceMap.spanForPath(diagnostic.path),
+  }));
 }
 
 function acceptDiagnostics(diagnostics: Diagnostic[], options: CommonOptions): boolean {

@@ -115,6 +115,35 @@ describe('questspec CLI', () => {
     );
   });
 
+  it('optionally validates references against an exact-runtime resource catalog', () => {
+    const root = mkdtempSync(join(tmpdir(), 'questspec-cli-'));
+    writeFileSync(join(root, 'quests.yml'), validQuestSpec);
+    writeFileSync(
+      join(root, 'resources.json'),
+      JSON.stringify({
+        advancements: {},
+        items: ['minecraft:iron_pickaxe'],
+        target: {
+          dataVersion: 13,
+          loader: 'neoforge@21.1.248',
+          minecraft: '1.21.1',
+          questSystem: 'ftbquests@2101.1.33',
+          serializer: 'ftblibrary@2101.1.35',
+        },
+      }),
+    );
+
+    const result = runCli(
+      ['validate', 'quests.yml', '--resources', 'resources.json', '--json'],
+      root,
+    );
+
+    expect(result.status).toBe(1);
+    expect(JSON.parse(result.stdout)).toEqual([
+      expect.objectContaining({ code: 'RESOURCE_UNKNOWN_ITEM', file: join(root, 'quests.yml') }),
+    ]);
+  });
+
   it('compiles atomically and requires force to replace output', () => {
     const root = mkdtempSync(join(tmpdir(), 'questspec-cli-'));
     writeFileSync(join(root, 'quests.yml'), validQuestSpec);
