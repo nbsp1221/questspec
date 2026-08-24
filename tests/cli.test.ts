@@ -177,6 +177,13 @@ describe('questspec CLI', () => {
     expect(blocked.status).toBe(1);
     expect(existsSync(join(root, 'blocked.yml'))).toBe(false);
 
+    const colliding = runCli(
+      ['import', 'generated', '--output', 'collision.yml', '--id-map', 'collision.yml'],
+      root,
+    );
+    expect(colliding.status).toBe(1);
+    expect(existsSync(join(root, 'collision.yml'))).toBe(false);
+
     const diff = runCli(['diff', 'imported.yml', 'generated'], root);
     expect(diff.status).toBe(0);
     expect(diff.stdout).toContain('No semantic differences');

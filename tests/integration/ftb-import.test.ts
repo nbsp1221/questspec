@@ -42,4 +42,36 @@ describe('FTB Quests 2101.1.33 import', () => {
       }),
     );
   });
+
+  it('fails closed instead of discarding unknown target fields', () => {
+    const original = compileFtbQuests2101(createQuestbookFixture());
+    const chapterPath = 'chapters/01_foundations.snbt';
+    const chapter = original.files
+      .get(chapterPath)!
+      .replace('filename: "01_foundations"', 'filename: "01_foundations"\nfuture_field: true');
+    const files = new Map(original.files);
+    files.set(chapterPath, chapter);
+
+    expect(() => decodeFtbQuests2101(files)).toThrowError(
+      expect.objectContaining<Partial<FtbQuestbookImportError>>({
+        code: 'IMPORT_UNSUPPORTED_FIELD',
+      }),
+    );
+  });
+
+  it('fails closed instead of discarding orphan translations', () => {
+    const original = compileFtbQuests2101(createQuestbookFixture());
+    const localePath = 'lang/en_us.snbt';
+    const locale = original.files
+      .get(localePath)!
+      .replace('{', '{\nquest.7000000000000001.title: "Orphan"');
+    const files = new Map(original.files);
+    files.set(localePath, locale);
+
+    expect(() => decodeFtbQuests2101(files)).toThrowError(
+      expect.objectContaining<Partial<FtbQuestbookImportError>>({
+        code: 'IMPORT_UNSUPPORTED_FIELD',
+      }),
+    );
+  });
 });

@@ -1,6 +1,5 @@
 import type { PhysicalIdMap, PhysicalObjectKind } from '../../identity/physical-id.ts';
 import type {
-  AdvancementTask,
   Chapter,
   ChapterGroup,
   ItemTask,
@@ -19,6 +18,7 @@ export type FtbQuestbookImportErrorCode =
   | 'IMPORT_INVALID_FIELD'
   | 'IMPORT_INVALID_QUESTBOOK'
   | 'IMPORT_MISSING_FILE'
+  | 'IMPORT_UNSUPPORTED_FIELD'
   | 'IMPORT_UNSUPPORTED_TYPE';
 
 export class FtbQuestbookImportError extends Error {
@@ -41,6 +41,31 @@ export interface ImportedFtbQuestbook {
 type TranslationValue = string | string[];
 type Translations = Map<string, Map<string, TranslationValue>>;
 
+const dataFields = [
+  'default_autoclaim_rewards',
+  'default_consume_items',
+  'default_quest_disable_jei',
+  'default_quest_shape',
+  'default_reward_team',
+  'detection_delay',
+  'disable_gui',
+  'drop_book_on_death',
+  'drop_loot_crates',
+  'emergency_items_cooldown',
+  'fallback_locale',
+  'grid_scale',
+  'hide_excluded_quests',
+  'icon',
+  'lock_message',
+  'loot_crate_no_drop',
+  'pause_game',
+  'presets',
+  'progression_mode',
+  'show_lock_icons',
+  'verify_on_load',
+  'version',
+] as const;
+
 interface LogicalIdResolver {
   get(kind: PhysicalObjectKind, physicalId: string): string | undefined;
 }
@@ -52,6 +77,8 @@ export function decodeFtbQuests2101(
   allocatePhysicalIds([], knownIds);
   const logicalIds = createLogicalIdResolver(knownIds);
   const data = parseRequired(files, 'data.snbt');
+  assertOnlyFields(data, dataFields, 'data.snbt');
+  assertRuntimeBoilerplate(data);
   const version = requiredNumber(data, 'version', 'data.snbt');
   if (version !== ftbQuests2101Profile.dataVersion) {
     throw invalidField(
@@ -112,6 +139,7 @@ export function decodeFtbQuests2101(
   chaptersWithOrder.sort((left, right) => left.order - right.order);
   const chapters = chaptersWithOrder.map(({ chapter }) => chapter);
   resolveQuestReferences(chapters, questByPhysicalId);
+  assertTranslationsConsumed(translations, ids);
 
   const questbook: Questbook = {
     chapters,
@@ -144,6 +172,23 @@ function decodeChapter(
   ids: PhysicalIdMap,
   logicalIds: LogicalIdResolver,
 ): { chapter: Chapter; order: number } {
+  assertOnlyFields(
+    compound,
+    [
+      'default_hide_dependency_lines',
+      'default_quest_shape',
+      'filename',
+      'group',
+      'icon',
+      'id',
+      'images',
+      'order_index',
+      'progression_mode',
+      'quest_links',
+      'quests',
+    ],
+    path,
+  );
   const physicalId = requiredString(compound, 'id', path);
   const filename = requiredString(compound, 'filename', path);
   const key = logicalIds.get('chapter', physicalId) ?? filename;
@@ -189,17 +234,17 @@ function decodeGroups(
   ids: PhysicalIdMap,
   logicalIds: LogicalIdResolver,
 ): Map<string, { group: ChapterGroup; physicalId: string }> {
+  assertOnlyFields(compound, ['chapter_groups'], 'chapter_groups.snbt');
   const groups = new Map<string, { group: ChapterGroup; physicalId: string }>();
   for (const [index, tag] of requiredList(
     compound,
     'chapter_groups',
     'chapter_groups.snbt',
   ).value.entries()) {
-    const physicalId = requiredString(
-      requiredCompoundTag(tag, `chapter_groups.snbt.chapter_groups[${index}]`),
-      'id',
-      `chapter_groups.snbt.chapter_groups[${index}]`,
-    );
+    const path = `chapter_groups.snbt.chapter_groups[${index}]`;
+    const groupCompound = requiredCompoundTag(tag, path);
+    assertOnlyFields(groupCompound, ['id'], path);
+    const physicalId = requiredString(groupCompound, 'id', path);
     const key = logicalIds.get('group', physicalId) ?? logicalKey('group', physicalId);
     recordId(ids, 'group', key, physicalId);
     groups.set(physicalId, {
@@ -223,6 +268,24 @@ function decodeQuest(
   ids: PhysicalIdMap,
   logicalIds: LogicalIdResolver,
 ): Quest {
+  assertOnlyFields(
+    compound,
+    [
+      'dep_control_pts',
+      'dependencies',
+      'hide_dependency_lines',
+      'hide_until_deps_visible',
+      'id',
+      'optional',
+      'rewards',
+      'shape',
+      'size',
+      'tasks',
+      'x',
+      'y',
+    ],
+    path,
+  );
   const physicalId = requiredString(compound, 'id', path);
   const fallbackLocalKey = logicalKey('quest', physicalId);
   const preferredKey = logicalIds.get('quest', physicalId);
@@ -282,6 +345,30 @@ function decodeTask(
 ): Task {
   const physicalId = requiredString(compound, 'id', path);
   const type = requiredString(compound, 'type', path);
+  if (type !== 'item' && type !== 'advancement') {
+    throw new FtbQuestbookImportError(
+      'IMPORT_UNSUPPORTED_TYPE',
+      `Unsupported FTB Quests task type: ${type}`,
+      `${path}.type`,
+    );
+  }
+  assertOnlyFields(
+    compound,
+    type === 'item'
+      ? [
+          'consume_items',
+          'count',
+          'id',
+          'item',
+          'match_components',
+          'only_from_crafting',
+          'optional_task',
+          'task_screen_only',
+          'type',
+        ]
+      : ['advancement', 'criterion', 'id', 'optional_task', 'type'],
+    path,
+  );
   const fallbackLocalKey = logicalKey('task', physicalId);
   const preferredKey = logicalIds.get('task', physicalId);
   const key = preferredKey ?? `${questKey}.${fallbackLocalKey}`;
@@ -306,20 +393,12 @@ function decodeTask(
     };
     return task;
   }
-  if (type === 'advancement') {
-    const task: AdvancementTask = {
-      ...base,
-      advancement: requiredString(compound, 'advancement', path),
-      criterion: optionalString(compound, 'criterion') ?? '',
-      type: 'advancement',
-    };
-    return task;
-  }
-  throw new FtbQuestbookImportError(
-    'IMPORT_UNSUPPORTED_TYPE',
-    `Unsupported FTB Quests task type: ${type}`,
-    `${path}.type`,
-  );
+  return {
+    ...base,
+    advancement: requiredString(compound, 'advancement', path),
+    criterion: optionalString(compound, 'criterion') ?? '',
+    type: 'advancement',
+  };
 }
 
 function decodeReward(
@@ -331,6 +410,7 @@ function decodeReward(
   ids: PhysicalIdMap,
   logicalIds: LogicalIdResolver,
 ): Reward {
+  assertOnlyFields(compound, ['auto', 'id', 'type', 'xp'], path);
   const physicalId = requiredString(compound, 'id', path);
   const type = requiredString(compound, 'type', path);
   if (type !== 'xp') {
@@ -504,6 +584,87 @@ function localizedLines(
   );
 }
 
+function assertTranslationsConsumed(translations: Translations, ids: PhysicalIdMap): void {
+  const expected = new Set<string>();
+  for (const [mapKey, physicalId] of Object.entries(ids)) {
+    const separator = mapKey.indexOf(':');
+    const kind = mapKey.slice(0, separator) as PhysicalObjectKind;
+    const translationKind = kind === 'group' ? 'chapter_group' : kind;
+    expected.add(`${translationKind}.${physicalId}.title`);
+    if (kind === 'quest') {
+      expected.add(`quest.${physicalId}.quest_desc`);
+    }
+  }
+  for (const [locale, values] of translations) {
+    for (const key of values.keys()) {
+      if (!expected.has(key)) {
+        throw new FtbQuestbookImportError(
+          'IMPORT_UNSUPPORTED_FIELD',
+          `Translation key is not represented by the MVP semantic model: ${key}`,
+          `lang/${locale}.snbt.${key}`,
+        );
+      }
+    }
+  }
+}
+
+function assertRuntimeBoilerplate(data: SnbtCompound): void {
+  assertDefaultBoolean(data, 'drop_book_on_death', false);
+  assertDefaultBoolean(data, 'hide_excluded_quests', false);
+  assertDefaultBoolean(data, 'verify_on_load', false);
+
+  const presets = optionalTag(data, 'presets');
+  if (
+    presets !== undefined &&
+    requiredCompoundTag(presets, 'data.snbt.presets').entries.length > 0
+  ) {
+    throw new FtbQuestbookImportError(
+      'IMPORT_UNSUPPORTED_FIELD',
+      'Non-empty presets are outside the MVP semantic subset',
+      'data.snbt.presets',
+    );
+  }
+
+  const noDrop = optionalTag(data, 'loot_crate_no_drop');
+  if (noDrop !== undefined) {
+    const compound = requiredCompoundTag(noDrop, 'data.snbt.loot_crate_no_drop');
+    assertOnlyFields(compound, ['boss', 'monster', 'passive'], 'data.snbt.loot_crate_no_drop');
+    const expected = { boss: 0, monster: 600, passive: 4_000 };
+    for (const [key, value] of Object.entries(expected)) {
+      if (requiredNumber(compound, key, 'data.snbt.loot_crate_no_drop') !== value) {
+        throw new FtbQuestbookImportError(
+          'IMPORT_UNSUPPORTED_FIELD',
+          `Custom loot-crate no-drop value is outside the MVP semantic subset: ${key}`,
+          `data.snbt.loot_crate_no_drop.${key}`,
+        );
+      }
+    }
+  }
+}
+
+function assertDefaultBoolean(compound: SnbtCompound, key: string, expected: boolean): void {
+  const value = optionalBoolean(compound, key);
+  if (value !== undefined && value !== expected) {
+    throw new FtbQuestbookImportError(
+      'IMPORT_UNSUPPORTED_FIELD',
+      `Non-default ${key} is outside the MVP semantic subset`,
+      `data.snbt.${key}`,
+    );
+  }
+}
+
+function assertOnlyFields(compound: SnbtCompound, allowed: readonly string[], path: string): void {
+  const allowedSet = new Set(allowed);
+  const unsupported = compound.entries.find((entry) => !allowedSet.has(entry.key));
+  if (unsupported !== undefined) {
+    throw new FtbQuestbookImportError(
+      'IMPORT_UNSUPPORTED_FIELD',
+      `Field is outside the MVP semantic subset: ${unsupported.key}`,
+      `${path}.${unsupported.key}`,
+    );
+  }
+}
+
 function parseRequired(files: ReadonlyMap<string, string>, path: string): SnbtCompound {
   const source = files.get(path);
   if (source === undefined) {
@@ -656,6 +817,15 @@ function optionalStringList(compound: SnbtCompound, key: string, path: string): 
 }
 
 function decodeItemStack(compound: SnbtCompound, path: string): string {
+  assertOnlyFields(compound, ['count', 'id'], path);
+  const count = optionalNumber(compound, 'count');
+  if (count !== undefined && count !== 1) {
+    throw new FtbQuestbookImportError(
+      'IMPORT_UNSUPPORTED_FIELD',
+      'Nested item-stack counts other than 1 are outside the MVP semantic subset',
+      `${path}.count`,
+    );
+  }
   return requiredString(compound, 'id', path);
 }
 

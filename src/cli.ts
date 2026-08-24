@@ -54,16 +54,22 @@ export function createCli(): CAC {
     .option('--resources <catalog>', 'Validate references against an exact-runtime catalog')
     .action(async (source: string, options: CommonOptions) => {
       const sourcePath = resolve(source);
-      const loaded = await loadSource(sourcePath);
-      if (
-        !acceptDiagnostics(loaded.diagnostics, options) ||
-        loaded.questbook === undefined ||
-        !acceptDiagnostics(await resourceDiagnostics(loaded, sourcePath, options), options)
-      ) {
+      const questbook = await loadValidatedSource(sourcePath, options);
+      if (questbook === undefined) {
         return;
       }
-      console.log(`Valid: ${sourcePath}`);
-      console.log(`Target: ${targetLabel()}`);
+      if (options.json) {
+        console.log(
+          JSON.stringify(
+            { source: sourcePath, target: ftbQuests2101Profile, valid: true },
+            undefined,
+            2,
+          ),
+        );
+      } else {
+        console.log(`Valid: ${sourcePath}`);
+        console.log(`Target: ${targetLabel()}`);
+      }
     });
 
   cli
@@ -78,19 +84,15 @@ export function createCli(): CAC {
         throw new Error('questspec compile: --output is required');
       }
       const sourcePath = resolve(source);
-      const loaded = await loadSource(sourcePath);
-      if (
-        !acceptDiagnostics(loaded.diagnostics, options) ||
-        loaded.questbook === undefined ||
-        !acceptDiagnostics(await resourceDiagnostics(loaded, sourcePath, options), options)
-      ) {
+      const questbook = await loadValidatedSource(sourcePath, options);
+      if (questbook === undefined) {
         return;
       }
       const idMapPath = resolve(options.idMap ?? defaultPhysicalIdMapPath(sourcePath));
       const importedIds = await readPhysicalIdMap(idMapPath);
       let compiled;
       try {
-        compiled = compileFtbQuests2101(loaded.questbook, importedIds);
+        compiled = compileFtbQuests2101(questbook, importedIds);
       } catch (error) {
         if (error instanceof FtbQuestbookCompilationError && error.diagnostics.length > 0) {
           acceptDiagnostics(error.diagnostics, options);
@@ -100,8 +102,18 @@ export function createCli(): CAC {
       }
       const output = resolve(options.output);
       await writeDirectoryAtomic(compiled.files, output, { overwrite: options.force });
-      console.log(`Compiled ${compiled.files.size} files to ${output}`);
-      console.log(`Target: ${targetLabel()}`);
+      if (options.json) {
+        console.log(
+          JSON.stringify(
+            { files: compiled.files.size, output, target: ftbQuests2101Profile },
+            undefined,
+            2,
+          ),
+        );
+      } else {
+        console.log(`Compiled ${compiled.files.size} files to ${output}`);
+        console.log(`Target: ${targetLabel()}`);
+      }
     });
 
   cli
@@ -116,6 +128,11 @@ export function createCli(): CAC {
       }
       const output = resolve(options.output);
       const idMapPath = resolve(options.idMap ?? defaultPhysicalIdMapPath(output));
+      if (output === idMapPath) {
+        throw new Error(
+          'questspec import: source output and physical ID map must be different files',
+        );
+      }
       const knownIds = await readPhysicalIdMap(idMapPath);
       const imported = decodeFtbQuests2101(await readSnbtDirectory(resolve(directory)), knownIds);
       await writeFileSetAtomic(
@@ -125,9 +142,24 @@ export function createCli(): CAC {
         ]),
         { overwrite: options.force },
       );
-      console.log(`Imported ${resolve(directory)} to ${output}`);
-      console.log(`ID map: ${idMapPath}`);
-      console.log(`Target: ${targetLabel()}`);
+      if (options.json) {
+        console.log(
+          JSON.stringify(
+            {
+              idMap: idMapPath,
+              input: resolve(directory),
+              output,
+              target: ftbQuests2101Profile,
+            },
+            undefined,
+            2,
+          ),
+        );
+      } else {
+        console.log(`Imported ${resolve(directory)} to ${output}`);
+        console.log(`ID map: ${idMapPath}`);
+        console.log(`Target: ${targetLabel()}`);
+      }
     });
 
   cli
@@ -191,6 +223,18 @@ interface LoadedSource {
 async function loadSource(path: string): Promise<LoadedSource> {
   const result = loadQuestbook(await readFile(path, 'utf8'), path);
   return { diagnostics: result.diagnostics, questbook: result.value, sourceMap: result.sourceMap };
+}
+
+async function loadValidatedSource(
+  path: string,
+  options: CommonOptions,
+): Promise<Questbook | undefined> {
+  const loaded = await loadSource(path);
+  if (!acceptDiagnostics(loaded.diagnostics, options) || loaded.questbook === undefined) {
+    return undefined;
+  }
+  const resourceErrors = await resourceDiagnostics(loaded, path, options);
+  return acceptDiagnostics(resourceErrors, options) ? loaded.questbook : undefined;
 }
 
 async function resourceDiagnostics(
