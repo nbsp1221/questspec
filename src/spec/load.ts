@@ -3,6 +3,7 @@ import { LineCounter, parseDocument } from 'yaml';
 import type { Diagnostic } from '../diagnostics/diagnostic.ts';
 import type { Questbook } from '../ir/questbook.ts';
 import { normalizeQuestSpec } from '../ir/normalize.ts';
+import { validateQuestbook } from '../validation/questbook.ts';
 import type { QuestSpecSource } from './types.ts';
 import { questSpecSchema } from './schema.ts';
 import { YamlSourceMap } from './source-map.ts';
@@ -55,9 +56,17 @@ export function loadQuestSpec(source: string, file?: string): LoadQuestSpecResul
 
 export function loadQuestbook(source: string, file?: string): LoadQuestbookResult {
   const loaded = loadQuestSpec(source, file);
-  return loaded.value === undefined
-    ? { diagnostics: loaded.diagnostics, sourceMap: loaded.sourceMap }
-    : { ...loaded, value: normalizeQuestSpec(loaded.value) };
+  if (loaded.value === undefined) {
+    return { diagnostics: loaded.diagnostics, sourceMap: loaded.sourceMap };
+  }
+
+  const value = normalizeQuestSpec(loaded.value);
+  const diagnostics = validateQuestbook(value).map((diagnostic) => ({
+    ...diagnostic,
+    file,
+    span: loaded.sourceMap.spanForPath(diagnostic.path),
+  }));
+  return { diagnostics, sourceMap: loaded.sourceMap, value };
 }
 
 function decodePointer(pointer: string): Array<number | string> {

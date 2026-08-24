@@ -109,4 +109,19 @@ describe('loadQuestSpec', () => {
       ],
     });
   });
+
+  it('attaches source spans to semantic validation diagnostics', () => {
+    const source = validSource.replace(
+      '        x: 0\n        y: 0',
+      '        x: 0\n        y: 0\n        dependencies: [missing]',
+    );
+    const result = loadQuestbook(source, 'questbook.yaml');
+    const diagnostic = result.diagnostics.find(({ code }) => code === 'GRAPH_MISSING_DEPENDENCY');
+
+    expect(diagnostic).toMatchObject({
+      file: 'questbook.yaml',
+      path: ['chapters', 0, 'quests', 0, 'dependencies', 0],
+    });
+    expect(diagnostic?.span?.start.line).toBe(32);
+  });
 });
