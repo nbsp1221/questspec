@@ -1,3 +1,4 @@
+export { defaultPhysicalIdMapPath, readPhysicalIdMap, serializePhysicalIdMap } from './id-map.ts';
 export {
   type PhysicalIdAllocation,
   type PhysicalIdErrorCode,
