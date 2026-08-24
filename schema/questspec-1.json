@@ -1,0 +1,456 @@
+{
+  "$id": "https://github.com/nbsp1221/questspec/schema/questspec-1.json",
+  "additionalProperties": false,
+  "properties": {
+    "chapters": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "defaultHideDependencyLines": {
+            "type": "boolean"
+          },
+          "defaultQuestShape": {
+            "type": "string"
+          },
+          "filename": {
+            "pattern": "^[a-z0-9][a-z0-9_-]*$",
+            "type": "string"
+          },
+          "group": {
+            "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+            "type": "string"
+          },
+          "icon": {
+            "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+            "type": "string"
+          },
+          "key": {
+            "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+            "type": "string"
+          },
+          "progressionMode": {
+            "enum": ["default", "flexible", "linear"],
+            "type": "string"
+          },
+          "quests": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "dependencies": {
+                  "items": {
+                    "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "dependencyControlPoints": {
+                  "additionalProperties": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        }
+                      },
+                      "required": ["x", "y"],
+                      "type": "object"
+                    },
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "type": "array"
+                  },
+                  "propertyNames": {
+                    "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "description": {
+                  "additionalProperties": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "minProperties": 1,
+                  "patternProperties": {
+                    "^[a-z]{2}_[a-z]{2}$": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "propertyNames": {
+                    "pattern": "^[a-z]{2}_[a-z]{2}$",
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "hideDependencyLines": {
+                  "type": "boolean"
+                },
+                "hideUntilDependenciesVisible": {
+                  "type": "boolean"
+                },
+                "key": {
+                  "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+                  "type": "string"
+                },
+                "optional": {
+                  "type": "boolean"
+                },
+                "rewards": {
+                  "items": {
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "autoClaim": {
+                            "enum": ["default", "disabled", "enabled"],
+                            "type": "string"
+                          },
+                          "key": {
+                            "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+                            "type": "string"
+                          },
+                          "title": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "minProperties": 1,
+                            "patternProperties": {
+                              "^[a-z]{2}_[a-z]{2}$": {
+                                "type": "string"
+                              }
+                            },
+                            "propertyNames": {
+                              "pattern": "^[a-z]{2}_[a-z]{2}$",
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "type": {
+                            "const": "xp",
+                            "type": "string"
+                          },
+                          "xp": {
+                            "maximum": 2147483647,
+                            "minimum": 1,
+                            "type": "integer"
+                          }
+                        },
+                        "required": ["key", "type", "xp"],
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                },
+                "shape": {
+                  "type": "string"
+                },
+                "size": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "tasks": {
+                  "items": {
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "key": {
+                            "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+                            "type": "string"
+                          },
+                          "optional": {
+                            "type": "boolean"
+                          },
+                          "title": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "minProperties": 1,
+                            "patternProperties": {
+                              "^[a-z]{2}_[a-z]{2}$": {
+                                "type": "string"
+                              }
+                            },
+                            "propertyNames": {
+                              "pattern": "^[a-z]{2}_[a-z]{2}$",
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "consumeItems": {
+                            "type": "boolean"
+                          },
+                          "count": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "item": {
+                            "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                            "type": "string"
+                          },
+                          "matchComponents": {
+                            "enum": ["none", "fuzzy", "strict"],
+                            "type": "string"
+                          },
+                          "onlyFromCrafting": {
+                            "type": "boolean"
+                          },
+                          "taskScreenOnly": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "const": "item",
+                            "type": "string"
+                          }
+                        },
+                        "required": ["key", "type", "item"],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "key": {
+                            "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+                            "type": "string"
+                          },
+                          "optional": {
+                            "type": "boolean"
+                          },
+                          "title": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "minProperties": 1,
+                            "patternProperties": {
+                              "^[a-z]{2}_[a-z]{2}$": {
+                                "type": "string"
+                              }
+                            },
+                            "propertyNames": {
+                              "pattern": "^[a-z]{2}_[a-z]{2}$",
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "advancement": {
+                            "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                            "type": "string"
+                          },
+                          "criterion": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "const": "advancement",
+                            "type": "string"
+                          }
+                        },
+                        "required": ["key", "type", "advancement"],
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "title": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "minProperties": 1,
+                  "patternProperties": {
+                    "^[a-z]{2}_[a-z]{2}$": {
+                      "type": "string"
+                    }
+                  },
+                  "propertyNames": {
+                    "pattern": "^[a-z]{2}_[a-z]{2}$",
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                }
+              },
+              "required": ["key", "title", "x", "y", "tasks"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "title": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "minProperties": 1,
+            "patternProperties": {
+              "^[a-z]{2}_[a-z]{2}$": {
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "pattern": "^[a-z]{2}_[a-z]{2}$",
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": ["key", "group", "filename", "title", "icon", "quests"],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "groups": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+            "type": "string"
+          },
+          "title": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "minProperties": 1,
+            "patternProperties": {
+              "^[a-z]{2}_[a-z]{2}$": {
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "pattern": "^[a-z]{2}_[a-z]{2}$",
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": ["key"],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "locales": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "pattern": "^[a-z]{2}_[a-z]{2}$",
+          "type": "string"
+        },
+        "supported": {
+          "items": {
+            "pattern": "^[a-z]{2}_[a-z]{2}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": ["default", "supported"],
+      "type": "object"
+    },
+    "questspec": {
+      "const": 1,
+      "type": "integer"
+    },
+    "settings": {
+      "additionalProperties": false,
+      "properties": {
+        "defaultAutoClaimRewards": {
+          "enum": ["disabled", "enabled"],
+          "type": "string"
+        },
+        "defaultConsumeItems": {
+          "type": "boolean"
+        },
+        "defaultQuestDisableRecipeViewing": {
+          "type": "boolean"
+        },
+        "defaultQuestShape": {
+          "type": "string"
+        },
+        "defaultRewardTeam": {
+          "type": "boolean"
+        },
+        "detectionDelay": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "disableGui": {
+          "type": "boolean"
+        },
+        "dropLootCrates": {
+          "type": "boolean"
+        },
+        "emergencyItemsCooldown": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "gridScale": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "icon": {
+          "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+          "type": "string"
+        },
+        "lockMessage": {
+          "type": "string"
+        },
+        "pauseGame": {
+          "type": "boolean"
+        },
+        "progressionMode": {
+          "enum": ["default", "flexible", "linear"],
+          "type": "string"
+        },
+        "showLockIcons": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "target": {
+      "additionalProperties": false,
+      "properties": {
+        "dataVersion": {
+          "const": 13,
+          "type": "integer"
+        },
+        "loader": {
+          "const": "neoforge@21.1.248",
+          "type": "string"
+        },
+        "minecraft": {
+          "const": "1.21.1",
+          "type": "string"
+        },
+        "questSystem": {
+          "const": "ftbquests@2101.1.33",
+          "type": "string"
+        },
+        "serializer": {
+          "const": "ftblibrary@2101.1.35",
+          "type": "string"
+        }
+      },
+      "required": ["minecraft", "loader", "questSystem", "serializer", "dataVersion"],
+      "type": "object"
+    }
+  },
+  "required": ["questspec", "target", "locales", "groups", "chapters"],
+  "type": "object"
+}
