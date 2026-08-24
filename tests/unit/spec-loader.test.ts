@@ -43,6 +43,128 @@ chapters:
 `;
 
 describe('loadQuestSpec', () => {
+  it('accepts and defaults the expanded portable task and reward families', () => {
+    const source = validSource
+      .replace(
+        `          - key: iron
+            type: item
+            item: minecraft:iron_ingot`,
+        `          - key: check
+            type: checkmark
+          - key: kill
+            type: kill
+            entity: minecraft:zombie
+            count: 2
+            entityTag: minecraft:skeletons
+            customName: Boss
+            nbtFilter:
+              snbt: '{Health: 20.0f}'
+          - key: structure
+            type: structure
+            structure: minecraft:village_plains
+          - key: stat
+            type: stat
+            stat: minecraft:jump
+            count: 3
+          - key: biome
+            type: biome
+            biome: '#minecraft:is_overworld'
+          - key: dimension
+            type: dimension
+            dimension: minecraft:overworld
+          - key: observe
+            type: observation
+            observationType: block
+            target: minecraft:stone
+            timer: 20`,
+      )
+      .replace(
+        `          - key: experience
+            type: xp
+            xp: 100`,
+        `          - key: item
+            type: item
+            item: minecraft:diamond
+          - key: levels
+            type: xp_levels
+            levels: 3`,
+      );
+
+    const result = loadQuestbook(source, 'questbook.yaml');
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.value?.chapters[0].quests[0].tasks.map(({ type }) => type)).toEqual([
+      'checkmark',
+      'kill',
+      'structure',
+      'stat',
+      'biome',
+      'dimension',
+      'observation',
+    ]);
+    expect(result.value?.chapters[0].quests[0].tasks[1]).toMatchObject({
+      count: 2,
+    });
+    expect(result.value?.chapters[0].quests[0].tasks[1]).toHaveProperty(
+      'nbtFilter',
+      expect.stringContaining('Health: 20.0f'),
+    );
+    expect(result.value?.chapters[0].quests[0].rewards).toMatchObject([
+      { count: 1, onlyOne: false, randomBonus: 0, type: 'item' },
+      { levels: 3, type: 'xp_levels' },
+    ]);
+  });
+
+  it('normalizes reward tables and logical table-backed rewards', () => {
+    const source = validSource
+      .replace(
+        'chapters:',
+        `rewardTables:
+  - key: common_materials
+    title:
+      en_us: Common materials
+      ko_kr: 일반 재료
+    emptyWeight: 0.5
+    lootSize: 2
+    entries:
+      - key: iron
+        type: item
+        item: minecraft:iron_ingot
+        count: 4
+        weight: 5
+      - key: levels
+        type: xp_levels
+        levels: 2
+chapters:`,
+      )
+      .replace(
+        `          - key: experience
+            type: xp
+            xp: 100`,
+        `          - key: random
+            type: random
+            table: common_materials`,
+      );
+
+    const result = loadQuestbook(source, 'questbook.yaml');
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.value?.rewardTables[0]).toMatchObject({
+      emptyWeight: 0.5,
+      entries: [
+        { reward: { count: 4, key: 'common_materials.iron', type: 'item' }, weight: 5 },
+        { reward: { key: 'common_materials.levels', levels: 2, type: 'xp_levels' }, weight: 1 },
+      ],
+      filename: 'common_materials',
+      key: 'common_materials',
+      lootSize: 2,
+    });
+    expect(result.value?.chapters[0].quests[0].rewards[0]).toMatchObject({
+      table: 'common_materials',
+      type: 'random',
+    });
+  });
+
   it('normalizes typed item components and common task and reward metadata', () => {
     const source = validSource
       .replace(
@@ -63,7 +185,7 @@ describe('loadQuestSpec', () => {
       .replace(
         '            xp: 100',
         `            xp: 100
-            teamReward: true
+            teamReward: enabled
             excludeFromClaimAll: true
             icon: minecraft:experience_bottle
             tags: [questspec:milestone]`,
@@ -85,7 +207,7 @@ describe('loadQuestSpec', () => {
       excludeFromClaimAll: true,
       icon: { id: 'minecraft:experience_bottle' },
       tags: ['questspec:milestone'],
-      teamReward: true,
+      teamReward: 'enabled',
     });
   });
 

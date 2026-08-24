@@ -7,9 +7,11 @@ import type {
   Quest,
   Questbook,
   Reward,
+  RewardTable,
   Task,
 } from '../../ir/questbook.ts';
 import type { SnbtCompound, SnbtTag } from '../../snbt/ast.ts';
+import type { ObservationType } from '../../spec/types.ts';
 import { allocatePhysicalIds, physicalIdKey } from '../../identity/physical-id.ts';
 import { parseSnbtCompound } from '../../snbt/parser.ts';
 import { writeSnbt } from '../../snbt/writer.ts';
@@ -114,6 +116,22 @@ export function decodeFtbQuests2101(
     ids,
     logicalIds,
   );
+  const tableFiles = [...files.entries()]
+    .filter(([filePath]) => /^reward_tables\/[a-z0-9][a-z0-9_-]*\.snbt$/u.test(filePath))
+    .sort(([left], [right]) => left.localeCompare(right));
+  const tableByPhysicalId = new Map<string, RewardTable>();
+  const tablesWithOrder = tableFiles.map(([filePath, source]) =>
+    decodeRewardTable(
+      parseSnbtCompound(source, { mode: 'ftb-compatible' }),
+      filePath,
+      locales,
+      translations,
+      ids,
+      logicalIds,
+      tableByPhysicalId,
+    ),
+  );
+  tablesWithOrder.sort((left, right) => left.order - right.order);
   const chapterFiles = [...files.entries()]
     .filter(([path]) => /^chapters\/[a-z0-9][a-z0-9_-]*\.snbt$/u.test(path))
     .sort(([left], [right]) => left.localeCompare(right));
@@ -136,6 +154,7 @@ export function decodeFtbQuests2101(
       questByPhysicalId,
       ids,
       logicalIds,
+      tableByPhysicalId,
     ),
   );
   chaptersWithOrder.sort((left, right) => left.order - right.order);
@@ -148,6 +167,7 @@ export function decodeFtbQuests2101(
     defaultLocale,
     groups: [...groupByPhysicalId.values()].map(({ group }) => group),
     locales,
+    rewardTables: tablesWithOrder.map(({ table }) => table),
     settings: decodeSettings(data),
     target: { ...ftbQuests2101Profile },
   };
@@ -173,6 +193,7 @@ function decodeChapter(
   questByPhysicalId: Map<string, string>,
   ids: PhysicalIdMap,
   logicalIds: LogicalIdResolver,
+  tableByPhysicalId: Map<string, RewardTable>,
 ): { chapter: Chapter; order: number } {
   assertOnlyFields(
     compound,
@@ -220,6 +241,7 @@ function decodeChapter(
         questByPhysicalId,
         ids,
         logicalIds,
+        tableByPhysicalId,
       ),
     ),
     title: localizedText(locales, translations, 'chapter', physicalId, 'title'),
@@ -260,6 +282,104 @@ function decodeGroups(
   return groups;
 }
 
+function decodeRewardTable(
+  compound: SnbtCompound,
+  path: string,
+  locales: string[],
+  translations: Translations,
+  ids: PhysicalIdMap,
+  logicalIds: LogicalIdResolver,
+  tableByPhysicalId: Map<string, RewardTable>,
+): { order: number; table: RewardTable } {
+  assertOnlyFields(
+    compound,
+    [
+      'empty_weight',
+      'hide_tooltip',
+      'icon',
+      'id',
+      'loot_crate',
+      'loot_size',
+      'loot_table_id',
+      'order_index',
+      'rewards',
+      'tags',
+      'use_title',
+    ],
+    path,
+  );
+  const physicalId = requiredString(compound, 'id', path);
+  const filename = path.slice('reward_tables/'.length, -'.snbt'.length);
+  const key = logicalIds.get('rewardTable', physicalId) ?? filename;
+  recordId(ids, 'rewardTable', key, physicalId);
+  const table: RewardTable = {
+    emptyWeight: optionalNumber(compound, 'empty_weight') ?? 0,
+    entries: optionalList(compound, 'rewards', path).value.map((tag, index) => {
+      const entryPath = `${path}.rewards[${index}]`;
+      const entry = requiredCompoundTag(tag, entryPath);
+      const weight = optionalNumber(entry, 'weight') ?? 1;
+      const withoutWeight = {
+        ...entry,
+        entries: entry.entries.filter(({ key: field }) => field !== 'weight'),
+      };
+      return {
+        reward: decodeReward(
+          withoutWeight,
+          entryPath,
+          key,
+          locales,
+          translations,
+          ids,
+          logicalIds,
+          tableByPhysicalId,
+          false,
+        ) as RewardTable['entries'][number]['reward'],
+        weight,
+      };
+    }),
+    filename,
+    hideTooltip: optionalBoolean(compound, 'hide_tooltip') ?? false,
+    ...decodeObjectCommon(compound, path),
+    key,
+    localKey: key,
+    ...decodeLootCrate(compound, path),
+    lootSize: optionalNumber(compound, 'loot_size') ?? 1,
+    lootTable: optionalString(compound, 'loot_table_id'),
+    title: localizedText(locales, translations, 'reward_table', physicalId, 'title'),
+    useTitle: optionalBoolean(compound, 'use_title') ?? false,
+  };
+  tableByPhysicalId.set(physicalId, table);
+  return { order: optionalNumber(compound, 'order_index') ?? 0, table };
+}
+
+function decodeLootCrate(compound: SnbtCompound, path: string): Pick<RewardTable, 'lootCrate'> {
+  const tag = optionalTag(compound, 'loot_crate');
+  if (tag === undefined) {
+    return {};
+  }
+  const crate = requiredCompoundTag(tag, `${path}.loot_crate`);
+  assertOnlyFields(
+    crate,
+    ['color', 'drops', 'glow', 'item_name', 'string_id'],
+    `${path}.loot_crate`,
+  );
+  const drops = requiredCompound(crate, 'drops', `${path}.loot_crate`);
+  assertOnlyFields(drops, ['boss', 'monster', 'passive'], `${path}.loot_crate.drops`);
+  return {
+    lootCrate: {
+      color: optionalNumber(crate, 'color') ?? 0xffffff,
+      drops: {
+        boss: optionalNumber(drops, 'boss') ?? 0,
+        monster: optionalNumber(drops, 'monster') ?? 0,
+        passive: optionalNumber(drops, 'passive') ?? 0,
+      },
+      glow: optionalBoolean(crate, 'glow') ?? false,
+      itemName: optionalString(crate, 'item_name'),
+      stringId: requiredString(crate, 'string_id', `${path}.loot_crate`),
+    },
+  };
+}
+
 function decodeQuest(
   compound: SnbtCompound,
   path: string,
@@ -269,6 +389,7 @@ function decodeQuest(
   questByPhysicalId: Map<string, string>,
   ids: PhysicalIdMap,
   logicalIds: LogicalIdResolver,
+  tableByPhysicalId: Map<string, RewardTable>,
 ): Quest {
   assertOnlyFields(
     compound,
@@ -315,6 +436,7 @@ function decodeQuest(
         translations,
         ids,
         logicalIds,
+        tableByPhysicalId,
       ),
     ),
     shape: optionalString(compound, 'shape') ?? '',
@@ -347,42 +469,44 @@ function decodeTask(
 ): Task {
   const physicalId = requiredString(compound, 'id', path);
   const type = requiredString(compound, 'type', path);
-  if (type !== 'item' && type !== 'advancement') {
+  const supportedTypes = [
+    'advancement',
+    'biome',
+    'checkmark',
+    'dimension',
+    'item',
+    'kill',
+    'observation',
+    'stat',
+    'structure',
+  ] as const;
+  if (!supportedTypes.includes(type as (typeof supportedTypes)[number])) {
     throw new FtbQuestbookImportError(
       'IMPORT_UNSUPPORTED_TYPE',
       `Unsupported FTB Quests task type: ${type}`,
       `${path}.type`,
     );
   }
-  assertOnlyFields(
-    compound,
-    type === 'item'
-      ? [
-          'consume_items',
-          'count',
-          'disable_toast',
-          'icon',
-          'id',
-          'item',
-          'match_components',
-          'only_from_crafting',
-          'optional_task',
-          'task_screen_only',
-          'tags',
-          'type',
-        ]
-      : [
-          'advancement',
-          'criterion',
-          'disable_toast',
-          'icon',
-          'id',
-          'optional_task',
-          'tags',
-          'type',
-        ],
-    path,
-  );
+  const commonFields = ['disable_toast', 'icon', 'id', 'optional_task', 'tags', 'type'];
+  const specificFields: Record<string, string[]> = {
+    advancement: ['advancement', 'criterion'],
+    biome: ['biome'],
+    checkmark: [],
+    dimension: ['dimension'],
+    item: [
+      'consume_items',
+      'count',
+      'item',
+      'match_components',
+      'only_from_crafting',
+      'task_screen_only',
+    ],
+    kill: ['custom_name', 'entity', 'entityTypeTag', 'nbt_filter', 'value'],
+    observation: ['observation_type', 'observe_type', 'timer', 'to_observe'],
+    stat: ['stat', 'value'],
+    structure: ['structure'],
+  };
+  assertOnlyFields(compound, [...commonFields, ...specificFields[type]], path);
   const fallbackLocalKey = logicalKey('task', physicalId);
   const preferredKey = logicalIds.get('task', physicalId);
   const key = preferredKey ?? `${questKey}.${fallbackLocalKey}`;
@@ -409,12 +533,67 @@ function decodeTask(
     };
     return task;
   }
-  return {
-    ...base,
-    advancement: requiredString(compound, 'advancement', path),
-    criterion: optionalString(compound, 'criterion') ?? '',
-    type: 'advancement',
-  };
+  switch (type) {
+    case 'advancement':
+      return {
+        ...base,
+        advancement: requiredString(compound, 'advancement', path),
+        criterion: optionalString(compound, 'criterion') ?? '',
+        type: 'advancement',
+      };
+    case 'biome':
+      return { ...base, biome: requiredString(compound, 'biome', path), type: 'biome' };
+    case 'checkmark':
+      return { ...base, type: 'checkmark' };
+    case 'dimension':
+      return {
+        ...base,
+        dimension: requiredString(compound, 'dimension', path),
+        type: 'dimension',
+      };
+    case 'kill': {
+      const nbtFilter = optionalTag(compound, 'nbt_filter');
+      return {
+        ...base,
+        count: requiredNumber(compound, 'value', path),
+        customName: optionalString(compound, 'custom_name'),
+        entity: requiredString(compound, 'entity', path),
+        entityTag: optionalString(compound, 'entityTypeTag'),
+        nbtFilter: nbtFilter === undefined ? undefined : writeSnbt(nbtFilter).trimEnd(),
+        type: 'kill',
+      };
+    }
+    case 'observation': {
+      const named = optionalString(compound, 'observation_type');
+      const ordinal = optionalNumber(compound, 'observe_type');
+      const observationType = decodeObservationType(named, ordinal, path);
+      return {
+        ...base,
+        observationType,
+        target: requiredString(compound, 'to_observe', path),
+        timer: optionalNumber(compound, 'timer') ?? 0,
+        type: 'observation',
+      };
+    }
+    case 'stat':
+      return {
+        ...base,
+        count: requiredNumber(compound, 'value', path),
+        stat: requiredString(compound, 'stat', path),
+        type: 'stat',
+      };
+    case 'structure':
+      return {
+        ...base,
+        structure: requiredString(compound, 'structure', path),
+        type: 'structure',
+      };
+  }
+  throw new FtbQuestbookImportError(
+    'IMPORT_UNSUPPORTED_TYPE',
+    `Unsupported FTB Quests task type: ${type}`,
+    `${path}.type`,
+  );
 }
 
 function decodeReward(
@@ -425,26 +604,42 @@ function decodeReward(
   translations: Translations,
   ids: PhysicalIdMap,
   logicalIds: LogicalIdResolver,
+  tableByPhysicalId: Map<string, RewardTable>,
+  allowTableBacked = true,
 ): Reward {
   assertOnlyFields(
     compound,
     [
       'auto',
+      'count',
       'disable_reward_screen_blur',
       'exclude_from_claim_all',
       'icon',
       'id',
       'ignore_reward_blocking',
+      'item',
+      'only_one',
+      'random_bonus',
       'tags',
+      'table_data',
+      'table_id',
       'team_reward',
       'type',
       'xp',
+      'xp_levels',
     ],
     path,
   );
   const physicalId = requiredString(compound, 'id', path);
-  const type = requiredString(compound, 'type', path);
-  if (type !== 'xp') {
+  const type = optionalString(compound, 'type') ?? 'item';
+  if (!allowTableBacked && ['choice', 'loot', 'random'].includes(type)) {
+    throw new FtbQuestbookImportError(
+      'IMPORT_UNSUPPORTED_TYPE',
+      'Reward-table entries cannot reference another reward table',
+      `${path}.type`,
+    );
+  }
+  if (!['choice', 'item', 'loot', 'random', 'xp', 'xp_levels'].includes(type)) {
     throw new FtbQuestbookImportError(
       'IMPORT_UNSUPPORTED_TYPE',
       `Unsupported FTB Quests reward type: ${type}`,
@@ -460,7 +655,10 @@ function decodeReward(
   if (!['default', 'disabled', 'enabled'].includes(autoClaim)) {
     throw invalidField(`${path}.auto`, `Unsupported auto-claim value ${autoClaim}`);
   }
-  return {
+  const teamRewardValue = optionalBoolean(compound, 'team_reward');
+  const teamReward: Reward['teamReward'] =
+    teamRewardValue === undefined ? 'default' : teamRewardValue ? 'enabled' : 'disabled';
+  const common = {
     autoClaim: autoClaim as Reward['autoClaim'],
     disableRewardScreenBlur: optionalBoolean(compound, 'disable_reward_screen_blur') ?? false,
     excludeFromClaimAll: optionalBoolean(compound, 'exclude_from_claim_all') ?? false,
@@ -468,10 +666,59 @@ function decodeReward(
     ignoreRewardBlocking: optionalBoolean(compound, 'ignore_reward_blocking') ?? false,
     key,
     localKey,
-    teamReward: optionalBoolean(compound, 'team_reward'),
+    teamReward,
     title: localizedText(locales, translations, 'reward', physicalId, 'title'),
-    type: 'xp',
-    xp: requiredNumber(compound, 'xp', path),
+  };
+  if (type === 'choice' || type === 'loot' || type === 'random') {
+    if (optionalTag(compound, 'table_data') !== undefined) {
+      throw new FtbQuestbookImportError(
+        'IMPORT_UNSUPPORTED_FIELD',
+        'Inline table_data is outside the supported contract',
+        `${path}.table_data`,
+      );
+    }
+    if (optionalBoolean(compound, 'exclude_from_claim_all') !== true) {
+      throw invalidField(
+        `${path}.exclude_from_claim_all`,
+        `${type} rewards require exclude_from_claim_all: true`,
+      );
+    }
+    if (optionalBoolean(compound, 'ignore_reward_blocking') === true) {
+      throw invalidField(
+        `${path}.ignore_reward_blocking`,
+        `${type} rewards cannot ignore reward blocking`,
+      );
+    }
+    const tablePhysicalId = requiredTablePhysicalId(compound, 'table_id', path);
+    const table = tableByPhysicalId.get(tablePhysicalId);
+    if (table === undefined) {
+      throw invalidField(`${path}.table_id`, `Unknown reward table ID ${tablePhysicalId}`);
+    }
+    return {
+      ...common,
+      excludeFromClaimAll: true,
+      ignoreRewardBlocking: false,
+      table: table.key,
+      type,
+    };
+  }
+  if (type === 'xp') {
+    return { ...common, type: 'xp', xp: requiredNumber(compound, 'xp', path) };
+  }
+  if (type === 'xp_levels') {
+    return {
+      ...common,
+      levels: requiredNumber(compound, 'xp_levels', path),
+      type: 'xp_levels',
+    };
+  }
+  return {
+    ...common,
+    count: optionalNumber(compound, 'count') ?? 1,
+    item: decodeItemStack(requiredCompound(compound, 'item', path), `${path}.item`),
+    onlyOne: optionalBoolean(compound, 'only_one') ?? false,
+    randomBonus: optionalNumber(compound, 'random_bonus') ?? 0,
+    type: 'item',
   };
 }
 
@@ -625,7 +872,8 @@ function assertTranslationsConsumed(translations: Translations, ids: PhysicalIdM
   for (const [mapKey, physicalId] of Object.entries(ids)) {
     const separator = mapKey.indexOf(':');
     const kind = mapKey.slice(0, separator) as PhysicalObjectKind;
-    const translationKind = kind === 'group' ? 'chapter_group' : kind;
+    const translationKind =
+      kind === 'group' ? 'chapter_group' : kind === 'rewardTable' ? 'reward_table' : kind;
     expected.add(`${translationKind}.${physicalId}.title`);
     if (kind === 'quest') {
       expected.add(`quest.${physicalId}.quest_desc`);
@@ -813,6 +1061,14 @@ function requiredNumber(compound: SnbtCompound, key: string, path: string): numb
   return numericValue(requiredTag(compound, key, path), `${path}.${key}`);
 }
 
+function requiredTablePhysicalId(compound: SnbtCompound, key: string, path: string): string {
+  const tag = requiredTag(compound, key, path);
+  if (tag.type !== 'long' || tag.value <= 0n) {
+    throw invalidField(`${path}.${key}`, 'Expected a positive signed-long reward-table ID');
+  }
+  return tag.value.toString(16).toUpperCase().padStart(16, '0');
+}
+
 function optionalNumber(compound: SnbtCompound, key: string): number | undefined {
   const tag = optionalTag(compound, key);
   return tag === undefined ? undefined : numericValue(tag, key);
@@ -910,6 +1166,42 @@ function decodeMatchComponents(
     throw invalidField(`${path}.match_components`, `Unsupported component match mode ${mode}`);
   }
   return mode;
+}
+
+const observationTypes = [
+  'block',
+  'block_tag',
+  'block_state',
+  'block_entity',
+  'block_entity_type',
+  'entity_type',
+  'entity_type_tag',
+] as const satisfies readonly ObservationType[];
+
+function decodeObservationType(
+  named: string | undefined,
+  ordinal: number | undefined,
+  path: string,
+): ObservationType {
+  const fromName = observationTypes.find((value) => value === named);
+  if (named !== undefined && fromName === undefined) {
+    throw invalidField(`${path}.observation_type`, `Unsupported observation type ${named}`);
+  }
+  const fromOrdinal = ordinal === undefined ? undefined : observationTypes[ordinal];
+  if (ordinal !== undefined && fromOrdinal === undefined) {
+    throw invalidField(`${path}.observe_type`, `Unsupported observation ordinal ${ordinal}`);
+  }
+  if (fromName !== undefined && fromOrdinal !== undefined && fromName !== fromOrdinal) {
+    throw invalidField(
+      `${path}.observation_type`,
+      `Observation type ${fromName} conflicts with legacy ordinal ${ordinal}`,
+    );
+  }
+  const value = fromName ?? fromOrdinal;
+  if (value === undefined) {
+    throw invalidField(path, 'Observation task requires observation_type or observe_type');
+  }
+  return value;
 }
 
 function decodeAutoClaim(value: string, path: string): 'disabled' | 'enabled' {

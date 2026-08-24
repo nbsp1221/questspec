@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export type PhysicalObjectKind = 'chapter' | 'group' | 'quest' | 'reward' | 'task';
+export type PhysicalObjectKind = 'chapter' | 'group' | 'quest' | 'reward' | 'rewardTable' | 'task';
 
 export interface PhysicalIdObject {
   key: string;

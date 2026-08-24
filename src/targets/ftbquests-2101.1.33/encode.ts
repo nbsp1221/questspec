@@ -7,6 +7,7 @@ import type {
   Quest,
   Questbook,
   Reward,
+  RewardTable,
   Task,
 } from '../../ir/questbook.ts';
 import type { SnbtCompound, SnbtTag } from '../../snbt/ast.ts';
@@ -21,6 +22,7 @@ import {
   snbtBoolean,
   snbtCompound,
   snbtDouble,
+  snbtFloat,
   snbtInt,
   snbtList,
   snbtLong,
@@ -81,6 +83,12 @@ export function compileFtbQuests2101(
       writeSnbt(encodeChapter(chapter, chapterIndex, ids)),
     );
   });
+  questbook.rewardTables.forEach((table, index) => {
+    files.set(
+      `reward_tables/${table.filename}.snbt`,
+      writeSnbt(encodeRewardTable(table, index, ids)),
+    );
+  });
   for (const locale of questbook.locales) {
     files.set(`lang/${locale}.snbt`, writeSnbt(encodeTranslations(questbook, locale, ids)));
   }
@@ -113,6 +121,12 @@ function collectObjects(questbook: Questbook): PhysicalIdObject[] {
         ...quest.rewards.map((reward) => ({ key: reward.key, kind: 'reward' as const })),
       );
     }
+  }
+  for (const table of questbook.rewardTables) {
+    objects.push({ key: table.key, kind: 'rewardTable' });
+    objects.push(
+      ...table.entries.map(({ reward }) => ({ key: reward.key, kind: 'reward' as const })),
+    );
   }
   return objects;
 }
@@ -288,27 +302,115 @@ function encodeControlPoints(quest: Quest, ids: PhysicalIdMap): SnbtCompound {
 }
 
 function encodeReward(reward: Reward, ids: PhysicalIdMap): SnbtCompound {
-  const entries: Array<[string, SnbtTag]> = [
-    ['id', snbtString(idFor(ids, 'reward', reward.key))],
-    ['type', snbtString('xp')],
-    ['xp', snbtInt(reward.xp)],
-  ];
+  const entries: Array<[string, SnbtTag]> = [['id', snbtString(idFor(ids, 'reward', reward.key))]];
+  if (reward.type !== 'item') {
+    entries.push(['type', snbtString(reward.type)]);
+  }
+  if (reward.type === 'xp') {
+    entries.push(['xp', snbtInt(reward.xp)]);
+  } else if (reward.type === 'xp_levels') {
+    entries.push(['xp_levels', snbtInt(reward.levels)]);
+  } else {
+    if (reward.type === 'item') {
+      entries.push(['item', encodeItemStack(reward.item, true)]);
+      if (reward.count !== 1) {
+        entries.push(['count', snbtInt(reward.count)]);
+      }
+      if (reward.randomBonus !== 0) {
+        entries.push(['random_bonus', snbtInt(reward.randomBonus)]);
+      }
+      if (reward.onlyOne) {
+        entries.push(['only_one', snbtBoolean(true)]);
+      }
+    } else {
+      entries.push(['table_id', snbtLong(BigInt(`0x${idFor(ids, 'rewardTable', reward.table)}`))]);
+    }
+  }
   if (reward.autoClaim !== 'default') {
     entries.push(['auto', snbtString(reward.autoClaim)]);
   }
-  if (reward.teamReward !== undefined) {
-    entries.push(['team_reward', snbtBoolean(reward.teamReward)]);
+  if (reward.teamReward !== 'default') {
+    entries.push(['team_reward', snbtBoolean(reward.teamReward === 'enabled')]);
   }
-  if (reward.excludeFromClaimAll) {
+  const tableBacked =
+    reward.type === 'choice' || reward.type === 'loot' || reward.type === 'random';
+  if (tableBacked || reward.excludeFromClaimAll) {
     entries.push(['exclude_from_claim_all', snbtBoolean(true)]);
   }
-  if (reward.ignoreRewardBlocking) {
+  if (!tableBacked && reward.ignoreRewardBlocking) {
     entries.push(['ignore_reward_blocking', snbtBoolean(true)]);
   }
   if (reward.disableRewardScreenBlur) {
     entries.push(['disable_reward_screen_blur', snbtBoolean(true)]);
   }
   encodeObjectCommon(entries, reward);
+  return snbtCompound(entries);
+}
+
+function encodeRewardTable(
+  table: RewardTable,
+  orderIndex: number,
+  ids: PhysicalIdMap,
+): SnbtCompound {
+  const entries: Array<[string, SnbtTag]> = [
+    ['id', snbtString(idFor(ids, 'rewardTable', table.key))],
+    ['order_index', snbtInt(orderIndex)],
+    ['loot_size', snbtInt(table.lootSize)],
+    [
+      'rewards',
+      snbtList(
+        table.entries.map(({ reward, weight }) => {
+          const encoded = encodeReward(reward, ids);
+          if (weight !== 1) {
+            encoded.entries.push({
+              key: 'weight',
+              keySpan: encoded.span,
+              value: snbtFloat(weight),
+            });
+          }
+          return encoded;
+        }),
+      ),
+    ],
+  ];
+  if (table.emptyWeight !== 0) {
+    entries.push(['empty_weight', snbtFloat(table.emptyWeight)]);
+  }
+  if (table.hideTooltip) {
+    entries.push(['hide_tooltip', snbtBoolean(true)]);
+  }
+  if (table.useTitle) {
+    entries.push(['use_title', snbtBoolean(true)]);
+  }
+  if (table.icon !== undefined) {
+    entries.push(['icon', encodeItemStack(table.icon)]);
+  }
+  if (table.tags.length > 0) {
+    entries.push(['tags', snbtStringList(table.tags)]);
+  }
+  if (table.lootTable !== undefined) {
+    entries.push(['loot_table_id', snbtString(table.lootTable)]);
+  }
+  if (table.lootCrate !== undefined) {
+    const crate = table.lootCrate;
+    const crateEntries: Array<[string, SnbtTag]> = [
+      ['string_id', snbtString(crate.stringId)],
+      ['color', snbtInt(crate.color)],
+      ['glow', snbtBoolean(crate.glow)],
+      [
+        'drops',
+        snbtCompound([
+          ['passive', snbtInt(crate.drops.passive)],
+          ['monster', snbtInt(crate.drops.monster)],
+          ['boss', snbtInt(crate.drops.boss)],
+        ]),
+      ],
+    ];
+    if (crate.itemName !== undefined) {
+      crateEntries.push(['item_name', snbtString(crate.itemName)]);
+    }
+    entries.push(['loot_crate', snbtCompound(crateEntries)]);
+  }
   return snbtCompound(entries);
 }
 
@@ -335,7 +437,68 @@ function encodeTaskCommon(entries: Array<[string, SnbtTag]>, task: Task): void {
 }
 
 function encodeTask(task: Task, ids: PhysicalIdMap): SnbtCompound {
-  return task.type === 'item' ? encodeItemTask(task, ids) : encodeAdvancementTask(task, ids);
+  if (task.type === 'item') {
+    return encodeItemTask(task, ids);
+  }
+  if (task.type === 'advancement') {
+    return encodeAdvancementTask(task, ids);
+  }
+  const entries: Array<[string, SnbtTag]> = [
+    ['id', snbtString(idFor(ids, 'task', task.key))],
+    ['type', snbtString(task.type)],
+  ];
+  switch (task.type) {
+    case 'biome':
+      entries.push(['biome', snbtString(task.biome)]);
+      break;
+    case 'checkmark':
+      break;
+    case 'dimension':
+      entries.push(['dimension', snbtString(task.dimension)]);
+      break;
+    case 'kill':
+      entries.push(['entity', snbtString(task.entity)], ['value', snbtLong(task.count)]);
+      if (task.entityTag !== undefined) {
+        entries.push(['entityTypeTag', snbtString(task.entityTag)]);
+      }
+      if (task.customName !== undefined) {
+        entries.push(['custom_name', snbtString(task.customName)]);
+      }
+      if (task.nbtFilter !== undefined) {
+        entries.push(['nbt_filter', parseSnbt(task.nbtFilter)]);
+      }
+      break;
+    case 'observation':
+      entries.push(
+        ['observation_type', snbtString(task.observationType)],
+        ['observe_type', snbtInt(observationTypeIndex(task.observationType))],
+        ['timer', snbtLong(task.timer)],
+        ['to_observe', snbtString(task.target)],
+      );
+      break;
+    case 'stat':
+      entries.push(['stat', snbtString(task.stat)], ['value', snbtInt(task.count)]);
+      break;
+    case 'structure':
+      entries.push(['structure', snbtString(task.structure)]);
+      break;
+  }
+  encodeTaskCommon(entries, task);
+  return snbtCompound(entries);
+}
+
+const observationTypes = [
+  'block',
+  'block_tag',
+  'block_state',
+  'block_entity',
+  'block_entity_type',
+  'entity_type',
+  'entity_type_tag',
+] as const;
+
+function observationTypeIndex(type: (typeof observationTypes)[number]): number {
+  return observationTypes.indexOf(type);
 }
 
 function encodeTranslations(
@@ -363,6 +526,12 @@ function encodeTranslations(
   for (const group of questbook.groups) {
     addText('group', group.key, 'title', group.title[locale]);
   }
+  for (const table of questbook.rewardTables) {
+    addText('rewardTable', table.key, 'title', table.title[locale]);
+    for (const { reward } of table.entries) {
+      addText('reward', reward.key, 'title', reward.title[locale]);
+    }
+  }
   for (const chapter of questbook.chapters) {
     addText('chapter', chapter.key, 'title', chapter.title[locale]);
     for (const quest of chapter.quests) {
@@ -389,5 +558,11 @@ function idFor(ids: PhysicalIdMap, kind: PhysicalObjectKind, key: string): strin
 }
 
 function translationKind(kind: PhysicalObjectKind): string {
-  return kind === 'group' ? 'chapter_group' : kind;
+  if (kind === 'group') {
+    return 'chapter_group';
+  }
+  if (kind === 'rewardTable') {
+    return 'reward_table';
+  }
+  return kind;
 }

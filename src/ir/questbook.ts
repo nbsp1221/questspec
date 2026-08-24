@@ -1,6 +1,7 @@
 import type {
   LocalizedLinesSource,
   LocalizedTextSource,
+  ObservationType,
   PointSource,
   QuestbookSettingsSource,
   TargetProfileSource,
@@ -45,7 +46,57 @@ export interface AdvancementTask extends TaskBase {
   type: 'advancement';
 }
 
-export type Task = AdvancementTask | ItemTask;
+export interface CheckmarkTask extends TaskBase {
+  type: 'checkmark';
+}
+
+export interface KillTask extends TaskBase {
+  count: number;
+  customName?: string;
+  entity: string;
+  entityTag?: string;
+  nbtFilter?: string;
+  type: 'kill';
+}
+
+export interface StructureTask extends TaskBase {
+  structure: string;
+  type: 'structure';
+}
+
+export interface StatTask extends TaskBase {
+  count: number;
+  stat: string;
+  type: 'stat';
+}
+
+export interface BiomeTask extends TaskBase {
+  biome: string;
+  type: 'biome';
+}
+
+export interface DimensionTask extends TaskBase {
+  dimension: string;
+  type: 'dimension';
+}
+
+export interface ObservationTask extends TaskBase {
+  observationType: ObservationType;
+  target: string;
+  timer: number;
+  type: 'observation';
+}
+
+export type Task =
+  | AdvancementTask
+  | BiomeTask
+  | CheckmarkTask
+  | DimensionTask
+  | ItemTask
+  | KillTask
+  | ObservationTask
+  | StatTask
+  | StructureTask;
 
 interface RewardBase extends QuestObjectIdentity {
   autoClaim: 'default' | 'disabled' | 'enabled';
@@ -54,7 +105,7 @@ interface RewardBase extends QuestObjectIdentity {
   icon?: ItemStack;
   ignoreRewardBlocking: boolean;
   tags: string[];
-  teamReward?: boolean;
+  teamReward: 'default' | 'disabled' | 'enabled';
   title: LocalizedTextSource;
 }
 
@@ -63,7 +114,55 @@ export interface XpReward extends RewardBase {
   xp: number;
 }
 
-export type Reward = XpReward;
+export interface XpLevelsReward extends RewardBase {
+  levels: number;
+  type: 'xp_levels';
+}
+
+export interface ItemReward extends RewardBase {
+  count: number;
+  item: ItemStack;
+  onlyOne: boolean;
+  randomBonus: number;
+  type: 'item';
+}
+
+export interface TableReward extends RewardBase {
+  excludeFromClaimAll: true;
+  ignoreRewardBlocking: false;
+  table: string;
+  type: 'choice' | 'loot' | 'random';
+}
+
+export type Reward = ItemReward | TableReward | XpLevelsReward | XpReward;
+export type TerminalReward = ItemReward | XpLevelsReward | XpReward;
+
+export interface WeightedReward {
+  reward: TerminalReward;
+  weight: number;
+}
+
+export interface LootCrate {
+  color: number;
+  drops: { boss: number; monster: number; passive: number };
+  glow: boolean;
+  itemName?: string;
+  stringId: string;
+}
+
+export interface RewardTable extends QuestObjectIdentity {
+  emptyWeight: number;
+  entries: WeightedReward[];
+  filename: string;
+  hideTooltip: boolean;
+  icon?: ItemStack;
+  lootCrate?: LootCrate;
+  lootSize: number;
+  lootTable?: string;
+  tags: string[];
+  title: LocalizedTextSource;
+  useTitle: boolean;
+}
 
 export interface Quest extends QuestObjectIdentity {
   dependencies: string[];
@@ -97,6 +196,7 @@ export interface Questbook {
   defaultLocale: string;
   groups: ChapterGroup[];
   locales: string[];
+  rewardTables: RewardTable[];
   settings: Omit<QuestbookSettingsSource, 'icon'> & { icon?: ItemStack };
   target: TargetProfileSource;
 }

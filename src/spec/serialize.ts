@@ -1,12 +1,14 @@
 import { stringify } from 'yaml';
-import type { ItemStack, Questbook } from '../ir/questbook.ts';
+import type { ItemStack, Questbook, TerminalReward } from '../ir/questbook.ts';
 import type {
   ChapterSource,
   ItemStackSource,
   QuestSource,
   QuestSpecSource,
   RewardSource,
+  RewardTableSource,
   TaskSource,
+  TerminalRewardSource,
 } from './types.ts';
 
 export function questbookToSource(questbook: Questbook): QuestSpecSource {
@@ -19,6 +21,9 @@ export function questbookToSource(questbook: Questbook): QuestSpecSource {
     })),
     locales: { default: questbook.defaultLocale, supported: [...questbook.locales] },
     questspec: 1,
+    ...(questbook.rewardTables.length > 0
+      ? { rewardTables: questbook.rewardTables.map(rewardTableToSource) }
+      : {}),
     settings: {
       ...settings,
       ...(settingsIcon === undefined ? {} : { icon: itemStackToSource(settingsIcon) }),
@@ -75,7 +80,7 @@ function questToSource(quest: Questbook['chapters'][number]['quests'][number]): 
 function rewardToSource(
   reward: Questbook['chapters'][number]['quests'][number]['rewards'][number],
 ): RewardSource {
-  return {
+  const common = {
     ...(reward.autoClaim !== 'default' ? { autoClaim: reward.autoClaim } : {}),
     ...(reward.disableRewardScreenBlur ? { disableRewardScreenBlur: true } : {}),
     ...(reward.excludeFromClaimAll ? { excludeFromClaimAll: true } : {}),
@@ -83,11 +88,73 @@ function rewardToSource(
     ...(reward.ignoreRewardBlocking ? { ignoreRewardBlocking: true } : {}),
     key: reward.localKey,
     ...(reward.tags.length > 0 ? { tags: [...reward.tags] } : {}),
-    ...(reward.teamReward === undefined ? {} : { teamReward: reward.teamReward }),
+    ...(reward.teamReward !== 'default' ? { teamReward: reward.teamReward } : {}),
     ...(Object.keys(reward.title).length > 0 ? { title: reward.title } : {}),
-    type: 'xp',
-    xp: reward.xp,
   };
+  switch (reward.type) {
+    case 'item':
+      return {
+        ...common,
+        ...(reward.count !== 1 ? { count: reward.count } : {}),
+        item: itemStackToSource(reward.item),
+        ...(reward.onlyOne ? { onlyOne: true } : {}),
+        ...(reward.randomBonus !== 0 ? { randomBonus: reward.randomBonus } : {}),
+        type: 'item',
+      };
+    case 'xp_levels':
+      return { ...common, levels: reward.levels, type: 'xp_levels' };
+    case 'xp':
+      return { ...common, type: 'xp', xp: reward.xp };
+    case 'choice':
+    case 'loot':
+    case 'random': {
+      const {
+        excludeFromClaimAll: _exclude,
+        ignoreRewardBlocking: _ignore,
+        ...tableCommon
+      } = common;
+      return { ...tableCommon, table: reward.table, type: reward.type };
+    }
+  }
+}
+
+function rewardTableToSource(table: Questbook['rewardTables'][number]): RewardTableSource {
+  const canonicalFilename = table.key.toLowerCase().replaceAll(/[^a-z0-9_-]/gu, '_');
+  return {
+    ...(table.emptyWeight !== 0 ? { emptyWeight: table.emptyWeight } : {}),
+    entries: table.entries.map(({ reward, weight }) => ({
+      ...terminalRewardToSource(reward),
+      ...(weight !== 1 ? { weight } : {}),
+    })),
+    ...(table.filename !== canonicalFilename ? { filename: table.filename } : {}),
+    ...(table.hideTooltip ? { hideTooltip: true } : {}),
+    ...(table.icon === undefined ? {} : { icon: itemStackToSource(table.icon) }),
+    key: table.localKey,
+    ...(table.lootCrate === undefined
+      ? {}
+      : {
+          lootCrate: {
+            ...(table.lootCrate.color !== 0xffffff ? { color: table.lootCrate.color } : {}),
+            ...(Object.values(table.lootCrate.drops).some((value) => value !== 0)
+              ? { drops: { ...table.lootCrate.drops } }
+              : {}),
+            ...(table.lootCrate.glow ? { glow: true } : {}),
+            ...(table.lootCrate.itemName === undefined
+              ? {}
+              : { itemName: table.lootCrate.itemName }),
+            stringId: table.lootCrate.stringId,
+          },
+        }),
+    ...(table.lootSize !== 1 ? { lootSize: table.lootSize } : {}),
+    ...(table.lootTable === undefined ? {} : { lootTable: table.lootTable }),
+    ...(table.tags.length > 0 ? { tags: [...table.tags] } : {}),
+    ...(Object.keys(table.title).length > 0 ? { title: table.title } : {}),
+    ...(table.useTitle ? { useTitle: true } : {}),
+  };
+}
+
+function terminalRewardToSource(reward: TerminalReward): TerminalRewardSource {
+  return rewardToSource(reward) as TerminalRewardSource;
 }
 
 function taskToSource(
@@ -101,24 +168,54 @@ function taskToSource(
     ...(task.tags.length > 0 ? { tags: [...task.tags] } : {}),
     ...(Object.keys(task.title).length > 0 ? { title: task.title } : {}),
   };
-  if (task.type === 'advancement') {
-    return {
-      ...common,
-      advancement: task.advancement,
-      ...(task.criterion !== '' ? { criterion: task.criterion } : {}),
-      type: 'advancement',
-    };
+  switch (task.type) {
+    case 'advancement':
+      return {
+        ...common,
+        advancement: task.advancement,
+        ...(task.criterion !== '' ? { criterion: task.criterion } : {}),
+        type: 'advancement',
+      };
+    case 'biome':
+      return { ...common, biome: task.biome, type: 'biome' };
+    case 'checkmark':
+      return { ...common, type: 'checkmark' };
+    case 'dimension':
+      return { ...common, dimension: task.dimension, type: 'dimension' };
+    case 'item':
+      return {
+        ...common,
+        ...(task.consumeItems === undefined ? {} : { consumeItems: task.consumeItems }),
+        ...(task.count !== 1 ? { count: task.count } : {}),
+        item: itemStackToSource(task.item),
+        ...(task.matchComponents !== 'none' ? { matchComponents: task.matchComponents } : {}),
+        ...(task.onlyFromCrafting === undefined ? {} : { onlyFromCrafting: task.onlyFromCrafting }),
+        ...(task.taskScreenOnly ? { taskScreenOnly: true } : {}),
+        type: 'item',
+      };
+    case 'kill':
+      return {
+        ...common,
+        count: task.count,
+        ...(task.customName === undefined ? {} : { customName: task.customName }),
+        entity: task.entity,
+        ...(task.entityTag === undefined ? {} : { entityTag: task.entityTag }),
+        ...(task.nbtFilter === undefined ? {} : { nbtFilter: { snbt: task.nbtFilter } }),
+        type: 'kill',
+      };
+    case 'observation':
+      return {
+        ...common,
+        observationType: task.observationType,
+        target: task.target,
+        ...(task.timer !== 0 ? { timer: task.timer } : {}),
+        type: 'observation',
+      };
+    case 'stat':
+      return { ...common, count: task.count, stat: task.stat, type: 'stat' };
+    case 'structure':
+      return { ...common, structure: task.structure, type: 'structure' };
   }
-  return {
-    ...common,
-    ...(task.consumeItems === undefined ? {} : { consumeItems: task.consumeItems }),
-    ...(task.count !== 1 ? { count: task.count } : {}),
-    item: itemStackToSource(task.item),
-    ...(task.matchComponents !== 'none' ? { matchComponents: task.matchComponents } : {}),
-    ...(task.onlyFromCrafting === undefined ? {} : { onlyFromCrafting: task.onlyFromCrafting }),
-    ...(task.taskScreenOnly ? { taskScreenOnly: true } : {}),
-    type: 'item',
-  };
 }
 
 function itemStackToSource(item: ItemStack): ItemStackSource {

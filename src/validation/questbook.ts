@@ -12,6 +12,7 @@ export function validateQuestbook(questbook: Questbook): Diagnostic[] {
   validateIdentities(questbook, diagnostics);
   validateGraph(questbook, diagnostics);
   validateLocalization(questbook, diagnostics);
+  validateFeatureContracts(questbook, diagnostics);
   return diagnostics;
 }
 
@@ -165,6 +166,33 @@ function validateIdentities(questbook: Questbook, diagnostics: Diagnostic[]): vo
   const quests = new Set<string>();
   const tasks = new Set<string>();
   const rewards = new Set<string>();
+  const rewardTables = new Set<string>();
+  const rewardTableFilenames = new Set<string>();
+  questbook.rewardTables.forEach((table, tableIndex) => {
+    checkDuplicate(
+      rewardTables,
+      table.key,
+      ['rewardTables', tableIndex, 'key'],
+      'reward table',
+      diagnostics,
+    );
+    checkDuplicate(
+      rewardTableFilenames,
+      table.filename.toLowerCase(),
+      ['rewardTables', tableIndex, 'filename'],
+      'reward table filename',
+      diagnostics,
+    );
+    table.entries.forEach(({ reward }, entryIndex) =>
+      checkDuplicate(
+        rewards,
+        reward.key,
+        ['rewardTables', tableIndex, 'entries', entryIndex, 'key'],
+        'reward',
+        diagnostics,
+      ),
+    );
+  });
   questbook.chapters.forEach((chapter, chapterIndex) => {
     checkDuplicate(
       chapters,
@@ -303,4 +331,115 @@ function validateLocalization(questbook: Questbook, diagnostics: Diagnostic[]): 
       );
     });
   });
+  questbook.rewardTables.forEach((table, tableIndex) => {
+    validateLocalizedValue(
+      table.title,
+      ['rewardTables', tableIndex, 'title'],
+      questbook,
+      diagnostics,
+      Object.keys(table.title).length > 0,
+    );
+    table.entries.forEach(({ reward }, entryIndex) =>
+      validateLocalizedValue(
+        reward.title,
+        ['rewardTables', tableIndex, 'entries', entryIndex, 'title'],
+        questbook,
+        diagnostics,
+        false,
+      ),
+    );
+  });
+}
+
+function validateFeatureContracts(questbook: Questbook, diagnostics: Diagnostic[]): void {
+  const tableKeys = new Set(questbook.rewardTables.map(({ key }) => key));
+  questbook.chapters.forEach((chapter, chapterIndex) =>
+    chapter.quests.forEach((quest, questIndex) => {
+      quest.rewards.forEach((reward, rewardIndex) => {
+        const path = ['chapters', chapterIndex, 'quests', questIndex, 'rewards', rewardIndex];
+        if (
+          (reward.type === 'choice' || reward.type === 'loot' || reward.type === 'random') &&
+          !tableKeys.has(reward.table)
+        ) {
+          addDiagnostic(
+            diagnostics,
+            'REWARD_TABLE_MISSING',
+            `Reward refers to missing reward table ${reward.table}`,
+            [...path, 'table'],
+          );
+        }
+        if (reward.type === 'item') {
+          checkRange(reward.count, 1, 8192, [...path, 'count'], diagnostics);
+          checkRange(reward.randomBonus, 0, 8192, [...path, 'randomBonus'], diagnostics);
+        }
+      });
+      quest.tasks.forEach((task, taskIndex) => {
+        const path = ['chapters', chapterIndex, 'quests', questIndex, 'tasks', taskIndex];
+        if (task.type === 'item' || task.type === 'kill' || task.type === 'stat') {
+          checkRange(task.count, 1, Number.MAX_SAFE_INTEGER, [...path, 'count'], diagnostics);
+        }
+        if (task.type === 'observation') {
+          checkRange(task.timer, 0, Number.MAX_SAFE_INTEGER, [...path, 'timer'], diagnostics);
+        }
+      });
+    }),
+  );
+  questbook.rewardTables.forEach((table, tableIndex) => {
+    const path = ['rewardTables', tableIndex];
+    checkNumberRange(table.emptyWeight, 0, Number.MAX_VALUE, [...path, 'emptyWeight'], diagnostics);
+    checkRange(table.lootSize, 1, 2_147_483_647, [...path, 'lootSize'], diagnostics);
+    table.entries.forEach(({ reward, weight }, entryIndex) => {
+      checkNumberRange(
+        weight,
+        0,
+        Number.MAX_VALUE,
+        [...path, 'entries', entryIndex, 'weight'],
+        diagnostics,
+      );
+      if (reward.type === 'item') {
+        checkRange(reward.count, 1, 8192, [...path, 'entries', entryIndex, 'count'], diagnostics);
+        checkRange(
+          reward.randomBonus,
+          0,
+          8192,
+          [...path, 'entries', entryIndex, 'randomBonus'],
+          diagnostics,
+        );
+      }
+    });
+  });
+}
+
+function checkNumberRange(
+  value: number,
+  minimum: number,
+  maximum: number,
+  path: Array<number | string>,
+  diagnostics: Diagnostic[],
+): void {
+  if (!Number.isFinite(value) || value < minimum || value > maximum) {
+    addDiagnostic(
+      diagnostics,
+      'VALUE_OUT_OF_RANGE',
+      `Expected a finite number from ${minimum} through ${maximum}, got ${value}`,
+      path,
+    );
+  }
+}
+
+function checkRange(
+  value: number,
+  minimum: number,
+  maximum: number,
+  path: Array<number | string>,
+  diagnostics: Diagnostic[],
+): void {
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value < minimum || value > maximum) {
+    addDiagnostic(
+      diagnostics,
+      'VALUE_OUT_OF_RANGE',
+      `Expected an integer from ${minimum} through ${maximum}, got ${value}`,
+      path,
+    );
+  }
 }

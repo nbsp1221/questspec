@@ -43,4 +43,37 @@ describe('validateQuestbook', () => {
       ]),
     );
   });
+
+  it('rejects missing reward tables and unsafe numeric values', () => {
+    const questbook = createQuestbookFixture();
+    questbook.chapters[0].quests[1].rewards[0] = {
+      autoClaim: 'default',
+      disableRewardScreenBlur: false,
+      excludeFromClaimAll: true,
+      ignoreRewardBlocking: false,
+      key: 'foundations.finish.random',
+      localKey: 'random',
+      table: 'missing',
+      tags: [],
+      teamReward: 'default',
+      title: {},
+      type: 'random',
+    };
+    questbook.rewardTables.push({
+      emptyWeight: -1,
+      entries: [],
+      filename: 'loot',
+      hideTooltip: false,
+      key: 'loot',
+      localKey: 'loot',
+      lootSize: 1,
+      tags: [],
+      title: {},
+      useTitle: false,
+    });
+
+    expect(validateQuestbook(questbook).map(({ code }) => code)).toEqual(
+      expect.arrayContaining(['REWARD_TABLE_MISSING', 'VALUE_OUT_OF_RANGE']),
+    );
+  });
 });

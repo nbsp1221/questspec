@@ -19,6 +19,7 @@ import type {
   Questbook,
   Reward,
   Task,
+  TerminalReward,
 } from './questbook.ts';
 
 export function normalizeQuestSpec(source: QuestSpecSource): Questbook {
@@ -28,6 +29,40 @@ export function normalizeQuestSpec(source: QuestSpecSource): Questbook {
     defaultLocale: source.locales.default,
     groups: source.groups.map((group) => ({ key: group.key, title: group.title ?? {} })),
     locales: [...source.locales.supported],
+    rewardTables: (source.rewardTables ?? []).map((table) => ({
+      emptyWeight: table.emptyWeight ?? 0,
+      entries: table.entries.map((entry) => ({
+        reward: normalizeReward(entry, table.key) as TerminalReward,
+        weight: entry.weight ?? 1,
+      })),
+      filename: table.filename ?? canonicalTableFilename(table.key),
+      hideTooltip: table.hideTooltip ?? false,
+      ...(table.icon === undefined ? {} : { icon: normalizeItemStack(table.icon) }),
+      key: table.key,
+      localKey: table.key,
+      ...(table.lootCrate === undefined
+        ? {}
+        : {
+            lootCrate: {
+              color: table.lootCrate.color ?? 0xffffff,
+              drops: {
+                boss: table.lootCrate.drops?.boss ?? 0,
+                monster: table.lootCrate.drops?.monster ?? 0,
+                passive: table.lootCrate.drops?.passive ?? 0,
+              },
+              glow: table.lootCrate.glow ?? false,
+              ...(table.lootCrate.itemName === undefined
+                ? {}
+                : { itemName: table.lootCrate.itemName }),
+              stringId: table.lootCrate.stringId,
+            },
+          }),
+      lootSize: table.lootSize ?? 1,
+      ...(table.lootTable === undefined ? {} : { lootTable: table.lootTable }),
+      tags: [...(table.tags ?? [])],
+      title: table.title ?? {},
+      useTitle: table.useTitle ?? false,
+    })),
     settings: {
       ...settings,
       ...(settingsIcon === undefined ? {} : { icon: normalizeItemStack(settingsIcon) }),
@@ -110,20 +145,49 @@ function normalizeQuest(quest: QuestSource, chapterKey: string): Quest {
 }
 
 function normalizeReward(reward: RewardSource, questKey: string): Reward {
-  return {
+  const common = {
     autoClaim: reward.autoClaim ?? 'default',
     disableRewardScreenBlur: reward.disableRewardScreenBlur ?? false,
-    excludeFromClaimAll: reward.excludeFromClaimAll ?? false,
+    excludeFromClaimAll:
+      'excludeFromClaimAll' in reward ? (reward.excludeFromClaimAll ?? false) : false,
     ...(reward.icon === undefined ? {} : { icon: normalizeItemStack(reward.icon) }),
-    ignoreRewardBlocking: reward.ignoreRewardBlocking ?? false,
+    ignoreRewardBlocking:
+      'ignoreRewardBlocking' in reward ? (reward.ignoreRewardBlocking ?? false) : false,
     key: `${questKey}.${reward.key}`,
     localKey: reward.key,
     tags: [...(reward.tags ?? [])],
-    teamReward: reward.teamReward,
+    teamReward: reward.teamReward ?? 'default',
     title: reward.title ?? {},
-    type: 'xp',
-    xp: reward.xp,
   };
+  switch (reward.type) {
+    case 'item':
+      return {
+        ...common,
+        count: reward.count ?? 1,
+        item: normalizeItemStack(reward.item),
+        onlyOne: reward.onlyOne ?? false,
+        randomBonus: reward.randomBonus ?? 0,
+        type: 'item',
+      };
+    case 'xp_levels':
+      return { ...common, levels: reward.levels, type: 'xp_levels' };
+    case 'xp':
+      return { ...common, type: 'xp', xp: reward.xp };
+    case 'choice':
+    case 'loot':
+    case 'random':
+      return {
+        ...common,
+        excludeFromClaimAll: true,
+        ignoreRewardBlocking: false,
+        table: reward.table,
+        type: reward.type,
+      };
+  }
+}
+
+function canonicalTableFilename(key: string): string {
+  return key.toLowerCase().replaceAll(/[^a-z0-9_-]/gu, '_');
 }
 
 function normalizeItemStack(item: ItemStackSource): ItemStack {
@@ -152,7 +216,48 @@ function normalizeTaskBase(task: TaskSource) {
 }
 
 function normalizeTask(task: TaskSource, questKey: string): Task {
-  return task.type === 'item'
-    ? normalizeItemTask(task, questKey)
-    : normalizeAdvancementTask(task, questKey);
+  if (task.type === 'item') {
+    return normalizeItemTask(task, questKey);
+  }
+  if (task.type === 'advancement') {
+    return normalizeAdvancementTask(task, questKey);
+  }
+  const common = {
+    ...normalizeTaskBase(task),
+    key: `${questKey}.${task.key}`,
+    localKey: task.key,
+  };
+  switch (task.type) {
+    case 'biome':
+      return { ...common, biome: task.biome, type: 'biome' };
+    case 'checkmark':
+      return { ...common, type: 'checkmark' };
+    case 'dimension':
+      return { ...common, dimension: task.dimension, type: 'dimension' };
+    case 'kill':
+      return {
+        ...common,
+        count: task.count,
+        customName: task.customName,
+        entity: task.entity,
+        entityTag: task.entityTag,
+        nbtFilter:
+          task.nbtFilter === undefined
+            ? undefined
+            : writeSnbt(parseSnbt(task.nbtFilter.snbt)).trimEnd(),
+        type: 'kill',
+      };
+    case 'observation':
+      return {
+        ...common,
+        observationType: task.observationType,
+        target: task.target,
+        timer: task.timer ?? 0,
+        type: 'observation',
+      };
+    case 'stat':
+      return { ...common, count: task.count, stat: task.stat, type: 'stat' };
+    case 'structure':
+      return { ...common, structure: task.structure, type: 'structure' };
+  }
 }

@@ -55,4 +55,38 @@ describe('artifact-aware resource validation', () => {
       expect.objectContaining({ code: 'RESOURCE_PROFILE_MISMATCH' }),
     );
   });
+
+  it('validates component types and expanded runtime-backed task resources', () => {
+    const questbook = createQuestbookFixture();
+    const itemTask = questbook.chapters[0].quests[0].tasks[0];
+    if (itemTask.type !== 'item') {
+      throw new Error('Expected item task fixture');
+    }
+    itemTask.item.components['minecraft:damage'] = '1';
+    questbook.chapters[0].quests[0].tasks.push({
+      count: 1,
+      disableToast: false,
+      entity: 'minecraft:zombie',
+      entityTag: 'minecraft:undead',
+      key: 'foundations.start.kill',
+      localKey: 'kill',
+      optional: false,
+      tags: [],
+      title: {},
+      type: 'kill',
+    });
+    const catalog = createResourceCatalog({
+      advancements: { 'minecraft:story/root': [''] },
+      componentTypes: [],
+      entityTypeTags: [],
+      entityTypes: ['minecraft:zombie'],
+      items: ['minecraft:iron_pickaxe', 'minecraft:oak_log'],
+      target: questbook.target,
+    });
+
+    expect(validateQuestbookResources(questbook, catalog).map(({ code }) => code)).toEqual([
+      'RESOURCE_UNKNOWN_COMPONENT_TYPE',
+      'RESOURCE_UNKNOWN_ENTITY_TYPE_TAG',
+    ]);
+  });
 });

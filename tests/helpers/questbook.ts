@@ -61,6 +61,7 @@ const questbook: Questbook = {
               key: 'foundations.finish.experience',
               localKey: 'experience',
               tags: [],
+              teamReward: 'default',
               title: {},
               type: 'xp',
               xp: 100,
@@ -92,6 +93,7 @@ const questbook: Questbook = {
   defaultLocale: 'en_us',
   groups: [{ key: 'industry', title: {} }],
   locales: ['en_us', 'ko_kr'],
+  rewardTables: [],
   settings: {},
   target: {
     dataVersion: 13,

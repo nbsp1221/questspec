@@ -2,6 +2,7 @@ import type {
   SnbtByte,
   SnbtCompound,
   SnbtDouble,
+  SnbtFloat,
   SnbtInt,
   SnbtList,
   SnbtLong,
@@ -24,6 +25,10 @@ export function snbtCompound(entries: Array<[string, SnbtTag]>): SnbtCompound {
 
 export function snbtDouble(value: number): SnbtDouble {
   return { span: syntheticSpan(), type: 'double', value };
+}
+
+export function snbtFloat(value: number): SnbtFloat {
+  return { span: syntheticSpan(), type: 'float', value };
 }
 
 export function snbtInt(value: number): SnbtInt {

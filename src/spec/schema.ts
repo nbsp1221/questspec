@@ -68,9 +68,14 @@ const rewardBaseProperties = {
   ignoreRewardBlocking: { type: 'boolean' },
   key: logicalKey,
   tags: { items: resourceLocation, type: 'array', uniqueItems: true },
-  teamReward: { type: 'boolean' },
+  teamReward: { enum: ['default', 'disabled', 'enabled'], type: 'string' },
   title: localizedText,
 } as const;
+const {
+  excludeFromClaimAll: _exclude,
+  ignoreRewardBlocking: _ignore,
+  ...tableRewardBaseProperties
+} = rewardBaseProperties;
 
 export const questSpecSchema = {
   $id: 'https://github.com/nbsp1221/questspec/schema/questspec-1.json',
@@ -120,6 +125,39 @@ export const questSpecSchema = {
                         required: ['key', 'type', 'xp'],
                         type: 'object',
                       },
+                      ...(['random', 'loot', 'choice'] as const).map((type) => ({
+                        additionalProperties: false,
+                        properties: {
+                          ...tableRewardBaseProperties,
+                          table: logicalKey,
+                          type: { const: type, type: 'string' },
+                        },
+                        required: ['key', 'type', 'table'],
+                        type: 'object',
+                      })),
+                      {
+                        additionalProperties: false,
+                        properties: {
+                          ...rewardBaseProperties,
+                          count: { maximum: 8192, minimum: 1, type: 'integer' },
+                          item: itemStack,
+                          onlyOne: { type: 'boolean' },
+                          randomBonus: { maximum: 8192, minimum: 0, type: 'integer' },
+                          type: { const: 'item', type: 'string' },
+                        },
+                        required: ['key', 'type', 'item'],
+                        type: 'object',
+                      },
+                      {
+                        additionalProperties: false,
+                        properties: {
+                          ...rewardBaseProperties,
+                          levels: { maximum: 2_147_483_647, minimum: 1, type: 'integer' },
+                          type: { const: 'xp_levels', type: 'string' },
+                        },
+                        required: ['key', 'type', 'levels'],
+                        type: 'object',
+                      },
                     ],
                   },
                   type: 'array',
@@ -145,6 +183,101 @@ export const questSpecSchema = {
                           type: { const: 'item', type: 'string' },
                         },
                         required: ['key', 'type', 'item'],
+                        type: 'object',
+                      },
+                      {
+                        additionalProperties: false,
+                        properties: {
+                          ...taskBaseProperties,
+                          type: { const: 'checkmark', type: 'string' },
+                        },
+                        required: ['key', 'type'],
+                        type: 'object',
+                      },
+                      {
+                        additionalProperties: false,
+                        properties: {
+                          ...taskBaseProperties,
+                          count: { maximum: Number.MAX_SAFE_INTEGER, minimum: 1, type: 'integer' },
+                          customName: { type: 'string' },
+                          entity: resourceLocation,
+                          entityTag: resourceLocation,
+                          nbtFilter: {
+                            additionalProperties: false,
+                            properties: { snbt: { minLength: 1, type: 'string' } },
+                            required: ['snbt'],
+                            type: 'object',
+                          },
+                          type: { const: 'kill', type: 'string' },
+                        },
+                        required: ['key', 'type', 'entity', 'count'],
+                        type: 'object',
+                      },
+                      {
+                        additionalProperties: false,
+                        properties: {
+                          ...taskBaseProperties,
+                          structure: resourceLocation,
+                          type: { const: 'structure', type: 'string' },
+                        },
+                        required: ['key', 'type', 'structure'],
+                        type: 'object',
+                      },
+                      {
+                        additionalProperties: false,
+                        properties: {
+                          ...taskBaseProperties,
+                          count: { maximum: 2_147_483_647, minimum: 1, type: 'integer' },
+                          stat: resourceLocation,
+                          type: { const: 'stat', type: 'string' },
+                        },
+                        required: ['key', 'type', 'stat', 'count'],
+                        type: 'object',
+                      },
+                      {
+                        additionalProperties: false,
+                        properties: {
+                          ...taskBaseProperties,
+                          biome: {
+                            pattern: '^#?[a-z0-9_.-]+:[a-z0-9_./-]+$',
+                            type: 'string',
+                          },
+                          type: { const: 'biome', type: 'string' },
+                        },
+                        required: ['key', 'type', 'biome'],
+                        type: 'object',
+                      },
+                      {
+                        additionalProperties: false,
+                        properties: {
+                          ...taskBaseProperties,
+                          dimension: resourceLocation,
+                          type: { const: 'dimension', type: 'string' },
+                        },
+                        required: ['key', 'type', 'dimension'],
+                        type: 'object',
+                      },
+                      {
+                        additionalProperties: false,
+                        properties: {
+                          ...taskBaseProperties,
+                          observationType: {
+                            enum: [
+                              'block',
+                              'block_tag',
+                              'block_state',
+                              'block_entity',
+                              'block_entity_type',
+                              'entity_type',
+                              'entity_type_tag',
+                            ],
+                            type: 'string',
+                          },
+                          target: { minLength: 1, type: 'string' },
+                          timer: { minimum: 0, type: 'integer' },
+                          type: { const: 'observation', type: 'string' },
+                        },
+                        required: ['key', 'type', 'observationType', 'target'],
                         type: 'object',
                       },
                       {
@@ -198,6 +331,90 @@ export const questSpecSchema = {
       type: 'object',
     },
     questspec: { const: 1, type: 'integer' },
+    rewardTables: {
+      items: {
+        additionalProperties: false,
+        properties: {
+          emptyWeight: { minimum: 0, type: 'number' },
+          entries: {
+            items: {
+              oneOf: [
+                {
+                  additionalProperties: false,
+                  properties: {
+                    ...rewardBaseProperties,
+                    count: { maximum: 8192, minimum: 1, type: 'integer' },
+                    item: itemStack,
+                    onlyOne: { type: 'boolean' },
+                    randomBonus: { maximum: 8192, minimum: 0, type: 'integer' },
+                    type: { const: 'item', type: 'string' },
+                    weight: { minimum: 0, type: 'number' },
+                  },
+                  required: ['key', 'type', 'item'],
+                  type: 'object',
+                },
+                {
+                  additionalProperties: false,
+                  properties: {
+                    ...rewardBaseProperties,
+                    type: { const: 'xp', type: 'string' },
+                    weight: { minimum: 0, type: 'number' },
+                    xp: { maximum: 2_147_483_647, minimum: 1, type: 'integer' },
+                  },
+                  required: ['key', 'type', 'xp'],
+                  type: 'object',
+                },
+                {
+                  additionalProperties: false,
+                  properties: {
+                    ...rewardBaseProperties,
+                    levels: { maximum: 2_147_483_647, minimum: 1, type: 'integer' },
+                    type: { const: 'xp_levels', type: 'string' },
+                    weight: { minimum: 0, type: 'number' },
+                  },
+                  required: ['key', 'type', 'levels'],
+                  type: 'object',
+                },
+              ],
+            },
+            minItems: 1,
+            type: 'array',
+          },
+          filename: { pattern: '^[a-z0-9][a-z0-9_-]*$', type: 'string' },
+          hideTooltip: { type: 'boolean' },
+          icon: itemStack,
+          key: logicalKey,
+          lootCrate: {
+            additionalProperties: false,
+            properties: {
+              color: { maximum: 16777215, minimum: 0, type: 'integer' },
+              drops: {
+                additionalProperties: false,
+                properties: {
+                  boss: { minimum: 0, type: 'integer' },
+                  monster: { minimum: 0, type: 'integer' },
+                  passive: { minimum: 0, type: 'integer' },
+                },
+                type: 'object',
+              },
+              glow: { type: 'boolean' },
+              itemName: { type: 'string' },
+              stringId: { minLength: 1, type: 'string' },
+            },
+            required: ['stringId'],
+            type: 'object',
+          },
+          lootSize: { minimum: 1, type: 'integer' },
+          lootTable: resourceLocation,
+          tags: { items: resourceLocation, type: 'array', uniqueItems: true },
+          title: localizedText,
+          useTitle: { type: 'boolean' },
+        },
+        required: ['key', 'entries'],
+        type: 'object',
+      },
+      type: 'array',
+    },
     settings: {
       additionalProperties: false,
       properties: {
