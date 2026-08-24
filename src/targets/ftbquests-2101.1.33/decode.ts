@@ -13,7 +13,7 @@ import type {
 import type { SnbtCompound, SnbtTag } from '../../snbt/ast.ts';
 import type { ObservationType } from '../../spec/types.ts';
 import { allocatePhysicalIds, physicalIdKey } from '../../identity/physical-id.ts';
-import { parseSnbtCompound } from '../../snbt/parser.ts';
+import { parseSnbt, parseSnbtCompound } from '../../snbt/parser.ts';
 import { writeSnbt } from '../../snbt/writer.ts';
 import { validateQuestbook } from '../../validation/questbook.ts';
 import { ftbQuests2101Profile } from './profile.ts';
@@ -552,14 +552,30 @@ function decodeTask(
         type: 'dimension',
       };
     case 'kill': {
-      const nbtFilter = optionalTag(compound, 'nbt_filter');
+      const nbtFilter = optionalString(compound, 'nbt_filter');
+      let normalizedNbtFilter: string | undefined;
+      if (nbtFilter !== undefined) {
+        try {
+          const parsed = parseSnbt(nbtFilter);
+          if (parsed.type !== 'compound') {
+            throw new Error('Kill-task NBT filter must be an SNBT compound');
+          }
+          normalizedNbtFilter = writeSnbt(parsed).trimEnd();
+        } catch (error) {
+          throw new FtbQuestbookImportError(
+            'IMPORT_INVALID_FIELD',
+            `Invalid kill-task NBT filter: ${(error as Error).message}`,
+            `${path}.nbt_filter`,
+          );
+        }
+      }
       return {
         ...base,
         count: requiredNumber(compound, 'value', path),
         customName: optionalString(compound, 'custom_name'),
         entity: requiredString(compound, 'entity', path),
         entityTag: optionalString(compound, 'entityTypeTag'),
-        nbtFilter: nbtFilter === undefined ? undefined : writeSnbt(nbtFilter).trimEnd(),
+        nbtFilter: normalizedNbtFilter,
         type: 'kill',
       };
     }

@@ -211,6 +211,38 @@ chapters:`,
     });
   });
 
+  it('reports invalid typed SNBT at the exact component path', () => {
+    const source = validSource.replace(
+      '            item: minecraft:iron_ingot',
+      `            item:
+              id: minecraft:iron_ingot
+              components:
+                minecraft:damage:
+                  snbt: '{broken'`,
+    );
+
+    const result = loadQuestbook(source, 'questbook.yaml');
+
+    expect(result.value).toBeUndefined();
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'SPEC_INVALID_SNBT',
+        path: [
+          'chapters',
+          0,
+          'quests',
+          0,
+          'tasks',
+          0,
+          'item',
+          'components',
+          'minecraft:damage',
+          'snbt',
+        ],
+      }),
+    );
+  });
+
   it('loads a valid bilingual questbook into the semantic source model', () => {
     const result = loadQuestSpec(validSource, 'questbook.yaml');
 

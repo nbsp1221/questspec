@@ -3,8 +3,9 @@ import { LineCounter, parseDocument } from 'yaml';
 import type { Diagnostic } from '../diagnostics/diagnostic.ts';
 import type { Questbook } from '../ir/questbook.ts';
 import { normalizeQuestSpec } from '../ir/normalize.ts';
+import { parseSnbt } from '../snbt/parser.ts';
 import { validateQuestbook } from '../validation/questbook.ts';
-import type { QuestSpecSource } from './types.ts';
+import type { ItemStackSource, QuestSpecSource } from './types.ts';
 import { questSpecSchema } from './schema.ts';
 import { YamlSourceMap } from './source-map.ts';
 
@@ -60,6 +61,11 @@ export function loadQuestbook(source: string, file?: string): LoadQuestbookResul
     return { diagnostics: loaded.diagnostics, sourceMap: loaded.sourceMap };
   }
 
+  const snbtDiagnostics = validateTypedSnbt(loaded.value, loaded.sourceMap, file);
+  if (snbtDiagnostics.length > 0) {
+    return { diagnostics: snbtDiagnostics, sourceMap: loaded.sourceMap };
+  }
+
   const value = normalizeQuestSpec(loaded.value);
   const diagnostics = validateQuestbook(value).map((diagnostic) => ({
     ...diagnostic,
@@ -67,6 +73,83 @@ export function loadQuestbook(source: string, file?: string): LoadQuestbookResul
     span: loaded.sourceMap.spanForPath(diagnostic.path),
   }));
   return { diagnostics, sourceMap: loaded.sourceMap, value };
+}
+
+function validateTypedSnbt(
+  source: QuestSpecSource,
+  sourceMap: YamlSourceMap,
+  file?: string,
+): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+
+  const checkExpression = (
+    value: string,
+    path: Array<number | string>,
+    compound: boolean,
+  ): void => {
+    try {
+      const parsed = parseSnbt(value);
+      if (compound && parsed.type !== 'compound') {
+        throw new TypeError(`Expected a compound SNBT value, got ${parsed.type}`);
+      }
+    } catch (error) {
+      diagnostics.push({
+        code: 'SPEC_INVALID_SNBT',
+        file,
+        message: error instanceof Error ? error.message : String(error),
+        path,
+        severity: 'error',
+        span: sourceMap.spanForPath(path),
+      });
+    }
+  };
+
+  const checkItemStack = (
+    item: ItemStackSource | undefined,
+    path: Array<number | string>,
+  ): void => {
+    if (item === undefined || typeof item === 'string') {
+      return;
+    }
+    Object.entries(item.components ?? {}).forEach(([component, value]) =>
+      checkExpression(value.snbt, [...path, 'components', component, 'snbt'], false),
+    );
+  };
+
+  checkItemStack(source.settings?.icon, ['settings', 'icon']);
+  source.chapters.forEach((chapter, chapterIndex) => {
+    checkItemStack(chapter.icon, ['chapters', chapterIndex, 'icon']);
+    chapter.quests.forEach((quest, questIndex) => {
+      quest.tasks.forEach((task, taskIndex) => {
+        const path = ['chapters', chapterIndex, 'quests', questIndex, 'tasks', taskIndex];
+        checkItemStack(task.icon, [...path, 'icon']);
+        if (task.type === 'item') {
+          checkItemStack(task.item, [...path, 'item']);
+        }
+        if (task.type === 'kill' && task.nbtFilter !== undefined) {
+          checkExpression(task.nbtFilter.snbt, [...path, 'nbtFilter', 'snbt'], true);
+        }
+      });
+      (quest.rewards ?? []).forEach((reward, rewardIndex) => {
+        const path = ['chapters', chapterIndex, 'quests', questIndex, 'rewards', rewardIndex];
+        checkItemStack(reward.icon, [...path, 'icon']);
+        if (reward.type === 'item') {
+          checkItemStack(reward.item, [...path, 'item']);
+        }
+      });
+    });
+  });
+  (source.rewardTables ?? []).forEach((table, tableIndex) => {
+    checkItemStack(table.icon, ['rewardTables', tableIndex, 'icon']);
+    table.entries.forEach((entry, entryIndex) => {
+      const path = ['rewardTables', tableIndex, 'entries', entryIndex];
+      checkItemStack(entry.icon, [...path, 'icon']);
+      if (entry.type === 'item') {
+        checkItemStack(entry.item, [...path, 'item']);
+      }
+    });
+  });
+  return diagnostics;
 }
 
 function decodePointer(pointer: string): Array<number | string> {

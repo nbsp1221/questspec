@@ -136,8 +136,27 @@ describe('FTB Quests 2101.1.33 import', () => {
     );
     const chapter = compiled.files.get('chapters/01_foundations.snbt');
     expect(chapter).toContain('entityTypeTag: "minecraft:skeletons"');
+    expect(chapter).toContain('nbt_filter: "{\\n\\tHealth: 20.0f\\n}"');
     expect(chapter).toContain('observe_type: 5');
     expect(chapter).toContain('xp_levels: 3');
+
+    const conflictingFiles = new Map(compiled.files);
+    conflictingFiles.set(
+      'chapters/01_foundations.snbt',
+      chapter!.replace('observe_type: 5', 'observe_type: 0'),
+    );
+    expect(() => decodeFtbQuests2101(conflictingFiles, compiled.ids)).toThrowError(
+      expect.objectContaining<Partial<FtbQuestbookImportError>>({ code: 'IMPORT_INVALID_FIELD' }),
+    );
+
+    const compoundFilterFiles = new Map(compiled.files);
+    compoundFilterFiles.set(
+      'chapters/01_foundations.snbt',
+      chapter!.replace('nbt_filter: "{\\n\\tHealth: 20.0f\\n}"', 'nbt_filter: { Health: 20.0f }'),
+    );
+    expect(() => decodeFtbQuests2101(compoundFilterFiles, compiled.ids)).toThrowError(
+      expect.objectContaining<Partial<FtbQuestbookImportError>>({ code: 'IMPORT_INVALID_FIELD' }),
+    );
   });
 
   it('round-trips reward-table identity, entries, settings, and references', () => {
@@ -216,6 +235,30 @@ describe('FTB Quests 2101.1.33 import', () => {
     );
     expect(compiled.files.has('reward_tables/common_materials.snbt')).toBe(true);
     expect(compiled.ids).toHaveProperty('rewardTable:common_materials');
+
+    const unknownTableField = new Map(compiled.files);
+    unknownTableField.set(
+      'reward_tables/common_materials.snbt',
+      compiled.files
+        .get('reward_tables/common_materials.snbt')!
+        .replace('loot_size: 2', 'loot_size: 2\n\tfuture_field: true'),
+    );
+    expect(() => decodeFtbQuests2101(unknownTableField, compiled.ids)).toThrowError(
+      expect.objectContaining<Partial<FtbQuestbookImportError>>({
+        code: 'IMPORT_UNSUPPORTED_FIELD',
+      }),
+    );
+
+    const missingRequiredFlag = new Map(compiled.files);
+    missingRequiredFlag.set(
+      'chapters/01_foundations.snbt',
+      compiled.files
+        .get('chapters/01_foundations.snbt')!
+        .replace(/\s*exclude_from_claim_all: true/gu, ''),
+    );
+    expect(() => decodeFtbQuests2101(missingRequiredFlag, compiled.ids)).toThrowError(
+      expect.objectContaining<Partial<FtbQuestbookImportError>>({ code: 'IMPORT_INVALID_FIELD' }),
+    );
   });
 
   it('preserves semantic content and physical IDs through import and recompilation', () => {

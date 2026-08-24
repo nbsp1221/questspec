@@ -63,6 +63,21 @@ chapters:
           - key: log
             type: item
             item: minecraft:oak_log
+        rewards:
+          - key: supplies
+            type: random
+            table: common_materials
+rewardTables:
+  - key: common_materials
+    title:
+      en_us: Common materials
+      ko_kr: 일반 재료
+    entries:
+      - key: iron
+        type: item
+        item: minecraft:iron_ingot
+        count: 4
+        weight: 5
 ```
 
 Validate and compile it:
@@ -85,7 +100,7 @@ questspec diff <source> <directory> [--id-map <file>] [--json]
 
 `validate` checks YAML syntax, the public schema, identities, dependency cycles and references, localization, the exact target profile, and optionally resources.
 
-`compile` emits `data.snbt`, `chapter_groups.snbt`, `chapters/*.snbt`, and `lang/*.snbt`. It fails closed on unsupported constructs and never leaves a partially replaced directory.
+`compile` emits `data.snbt`, `chapter_groups.snbt`, `chapters/*.snbt`, `reward_tables/*.snbt`, and `lang/*.snbt`. It fails closed on unsupported constructs and never leaves a partially replaced directory.
 
 `import` supports the same MVP subset in reverse and writes both YAML and a physical-ID map as one transaction. Without a pre-existing ID map, imported logical keys are derived from stable physical IDs because FTB files do not retain the original authoring keys.
 
@@ -113,6 +128,18 @@ Renaming a logical key is a migration. Questspec does not silently infer that tw
     "dataVersion": 13
   },
   "items": ["minecraft:iron_pickaxe", "minecraft:oak_log"],
+  "componentTypes": ["minecraft:damage"],
+  "entityTypes": ["minecraft:zombie"],
+  "entityTypeTags": ["minecraft:undead"],
+  "structures": ["minecraft:village_plains"],
+  "stats": ["minecraft:jump"],
+  "biomes": ["minecraft:plains"],
+  "biomeTags": ["minecraft:is_overworld"],
+  "dimensions": ["minecraft:overworld"],
+  "blocks": ["minecraft:stone"],
+  "blockTags": ["minecraft:mineable/pickaxe"],
+  "blockEntityTypes": ["minecraft:chest"],
+  "lootTables": ["minecraft:chests/simple_dungeon"],
   "advancements": {
     "minecraft:story/root": ["root"]
   }
@@ -125,7 +152,27 @@ A near-miss profile is rejected. Catalog generation is deliberately environment-
 
 The versioned authoring contract is published as [schema/questspec-1.json](schema/questspec-1.json). Unknown properties and unsupported task or reward types are errors.
 
-The MVP supports chapter groups, chapters, quest layout and dependencies, dependency control points, item and advancement tasks, XP rewards, visibility fields used by the target pack, and localized text. It does not preserve arbitrary unknown FTB data.
+The MVP supports:
+
+- item, advancement, checkmark, kill, structure, stat, biome, dimension, and observation tasks
+- XP, XP-level, item, random, loot, and choice rewards
+- reward tables with terminal item, XP, and XP-level entries
+- component-aware Minecraft 1.21 item stacks using explicit typed SNBT leaves
+- shared task and reward metadata, stable identities, localization, layout, and dependencies
+
+Component-bearing item stacks use an object instead of the string shorthand:
+
+```yaml
+item:
+  id: minecraft:diamond_sword
+  components:
+    minecraft:damage:
+      snbt: '1'
+```
+
+The `snbt` wrapper is intentional: it preserves byte, int, long, float, double, list, and compound distinctions that YAML scalar inference would otherwise erase. Invalid or trailing SNBT is rejected at its exact source path.
+
+Questspec does not preserve arbitrary unknown FTB data. Unsupported built-in, addon, inline-table, recursive-table, and legacy item-NBT constructs fail closed instead of being silently discarded.
 
 ## Development
 

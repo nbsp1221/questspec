@@ -73,7 +73,30 @@ describe('validateQuestbook', () => {
     });
 
     expect(validateQuestbook(questbook).map(({ code }) => code)).toEqual(
-      expect.arrayContaining(['REWARD_TABLE_MISSING', 'VALUE_OUT_OF_RANGE']),
+      expect.arrayContaining(['REWARD_TABLE_EMPTY', 'REWARD_TABLE_MISSING', 'VALUE_OUT_OF_RANGE']),
+    );
+  });
+
+  it('rejects unsafe filenames, invalid typed SNBT, and out-of-range terminal rewards', () => {
+    const questbook = createQuestbookFixture();
+    questbook.chapters[0].filename = '../escape';
+    const task = questbook.chapters[0].quests[0].tasks[0];
+    if (task.type !== 'item') {
+      throw new Error('Expected item task fixture');
+    }
+    task.item.components['minecraft:damage'] = '{';
+    const reward = questbook.chapters[0].quests[1].rewards[0];
+    if (reward.type !== 'xp') {
+      throw new Error('Expected XP reward fixture');
+    }
+    reward.xp = 0;
+
+    expect(validateQuestbook(questbook)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'FILENAME_INVALID' }),
+        expect.objectContaining({ code: 'SNBT_INVALID' }),
+        expect.objectContaining({ code: 'VALUE_OUT_OF_RANGE' }),
+      ]),
     );
   });
 });

@@ -1,5 +1,8 @@
 import type { Diagnostic } from '../diagnostics/diagnostic.ts';
-import type { Quest, Questbook } from '../ir/questbook.ts';
+import type { ItemStack, Quest, Questbook, Reward } from '../ir/questbook.ts';
+import { parseSnbt } from '../snbt/parser.ts';
+
+const filenamePattern = /^[a-z0-9][a-z0-9_-]*$/u;
 
 interface QuestRecord {
   chapterIndex: number;
@@ -353,7 +356,11 @@ function validateLocalization(questbook: Questbook, diagnostics: Diagnostic[]): 
 
 function validateFeatureContracts(questbook: Questbook, diagnostics: Diagnostic[]): void {
   const tableKeys = new Set(questbook.rewardTables.map(({ key }) => key));
-  questbook.chapters.forEach((chapter, chapterIndex) =>
+  checkItemStack(questbook.settings.icon, ['settings', 'icon'], diagnostics);
+  questbook.chapters.forEach((chapter, chapterIndex) => {
+    const chapterPath = ['chapters', chapterIndex] as Array<number | string>;
+    checkFilename(chapter.filename, [...chapterPath, 'filename'], diagnostics);
+    checkItemStack(chapter.icon, [...chapterPath, 'icon'], diagnostics);
     chapter.quests.forEach((quest, questIndex) => {
       quest.rewards.forEach((reward, rewardIndex) => {
         const path = ['chapters', chapterIndex, 'quests', questIndex, 'rewards', rewardIndex];
@@ -368,24 +375,38 @@ function validateFeatureContracts(questbook: Questbook, diagnostics: Diagnostic[
             [...path, 'table'],
           );
         }
-        if (reward.type === 'item') {
-          checkRange(reward.count, 1, 8192, [...path, 'count'], diagnostics);
-          checkRange(reward.randomBonus, 0, 8192, [...path, 'randomBonus'], diagnostics);
-        }
+        validateReward(reward, path, diagnostics);
       });
       quest.tasks.forEach((task, taskIndex) => {
         const path = ['chapters', chapterIndex, 'quests', questIndex, 'tasks', taskIndex];
+        checkItemStack(task.icon, [...path, 'icon'], diagnostics);
         if (task.type === 'item' || task.type === 'kill' || task.type === 'stat') {
           checkRange(task.count, 1, Number.MAX_SAFE_INTEGER, [...path, 'count'], diagnostics);
+        }
+        if (task.type === 'item') {
+          checkItemStack(task.item, [...path, 'item'], diagnostics);
+        }
+        if (task.type === 'kill' && task.nbtFilter !== undefined) {
+          checkSnbt(task.nbtFilter, [...path, 'nbtFilter'], diagnostics, true);
         }
         if (task.type === 'observation') {
           checkRange(task.timer, 0, Number.MAX_SAFE_INTEGER, [...path, 'timer'], diagnostics);
         }
       });
-    }),
-  );
+    });
+  });
   questbook.rewardTables.forEach((table, tableIndex) => {
     const path = ['rewardTables', tableIndex];
+    checkFilename(table.filename, [...path, 'filename'], diagnostics);
+    checkItemStack(table.icon, [...path, 'icon'], diagnostics);
+    if (table.entries.length === 0) {
+      addDiagnostic(
+        diagnostics,
+        'REWARD_TABLE_EMPTY',
+        'Reward tables must contain at least one entry',
+        [...path, 'entries'],
+      );
+    }
     checkNumberRange(table.emptyWeight, 0, Number.MAX_VALUE, [...path, 'emptyWeight'], diagnostics);
     checkRange(table.lootSize, 1, 2_147_483_647, [...path, 'lootSize'], diagnostics);
     table.entries.forEach(({ reward, weight }, entryIndex) => {
@@ -396,18 +417,75 @@ function validateFeatureContracts(questbook: Questbook, diagnostics: Diagnostic[
         [...path, 'entries', entryIndex, 'weight'],
         diagnostics,
       );
-      if (reward.type === 'item') {
-        checkRange(reward.count, 1, 8192, [...path, 'entries', entryIndex, 'count'], diagnostics);
-        checkRange(
-          reward.randomBonus,
-          0,
-          8192,
-          [...path, 'entries', entryIndex, 'randomBonus'],
-          diagnostics,
-        );
-      }
+      validateReward(reward, [...path, 'entries', entryIndex], diagnostics);
     });
   });
+}
+
+function validateReward(
+  reward: Reward,
+  path: Array<number | string>,
+  diagnostics: Diagnostic[],
+): void {
+  checkItemStack(reward.icon, [...path, 'icon'], diagnostics);
+  if (reward.type === 'item') {
+    checkItemStack(reward.item, [...path, 'item'], diagnostics);
+    checkRange(reward.count, 1, 8192, [...path, 'count'], diagnostics);
+    checkRange(reward.randomBonus, 0, 8192, [...path, 'randomBonus'], diagnostics);
+  } else if (reward.type === 'xp') {
+    checkRange(reward.xp, 1, 2_147_483_647, [...path, 'xp'], diagnostics);
+  } else if (reward.type === 'xp_levels') {
+    checkRange(reward.levels, 1, 2_147_483_647, [...path, 'levels'], diagnostics);
+  }
+}
+
+function checkFilename(
+  value: string,
+  path: Array<number | string>,
+  diagnostics: Diagnostic[],
+): void {
+  if (!filenamePattern.test(value)) {
+    addDiagnostic(
+      diagnostics,
+      'FILENAME_INVALID',
+      `Expected a safe lowercase filename, got ${value}`,
+      path,
+    );
+  }
+}
+
+function checkItemStack(
+  item: ItemStack | undefined,
+  path: Array<number | string>,
+  diagnostics: Diagnostic[],
+): void {
+  if (item === undefined) {
+    return;
+  }
+  for (const [component, value] of Object.entries(item.components)) {
+    checkSnbt(value, [...path, 'components', component], diagnostics, false);
+  }
+}
+
+function checkSnbt(
+  value: string,
+  path: Array<number | string>,
+  diagnostics: Diagnostic[],
+  requireCompound: boolean,
+): void {
+  try {
+    const parsed = parseSnbt(value);
+    if (requireCompound && parsed.type !== 'compound') {
+      throw new Error('Expected an SNBT compound');
+    }
+  } catch (error) {
+    addDiagnostic(
+      diagnostics,
+      'SNBT_INVALID',
+      `Invalid typed SNBT: ${(error as Error).message}`,
+      path,
+    );
+  }
 }
 
 function checkNumberRange(

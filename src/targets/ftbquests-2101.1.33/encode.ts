@@ -465,7 +465,7 @@ function encodeTask(task: Task, ids: PhysicalIdMap): SnbtCompound {
         entries.push(['custom_name', snbtString(task.customName)]);
       }
       if (task.nbtFilter !== undefined) {
-        entries.push(['nbt_filter', parseSnbt(task.nbtFilter)]);
+        entries.push(['nbt_filter', snbtString(task.nbtFilter)]);
       }
       break;
     case 'observation':
