@@ -1,7 +1,8 @@
 import { stringify } from 'yaml';
-import type { Questbook } from '../ir/questbook.ts';
+import type { ItemStack, Questbook } from '../ir/questbook.ts';
 import type {
   ChapterSource,
+  ItemStackSource,
   QuestSource,
   QuestSpecSource,
   RewardSource,
@@ -9,6 +10,7 @@ import type {
 } from './types.ts';
 
 export function questbookToSource(questbook: Questbook): QuestSpecSource {
+  const { icon: settingsIcon, ...settings } = questbook.settings;
   return {
     chapters: questbook.chapters.map(chapterToSource),
     groups: questbook.groups.map((group) => ({
@@ -17,7 +19,10 @@ export function questbookToSource(questbook: Questbook): QuestSpecSource {
     })),
     locales: { default: questbook.defaultLocale, supported: [...questbook.locales] },
     questspec: 1,
-    settings: { ...questbook.settings },
+    settings: {
+      ...settings,
+      ...(settingsIcon === undefined ? {} : { icon: itemStackToSource(settingsIcon) }),
+    },
     target: { ...questbook.target },
   };
 }
@@ -32,7 +37,7 @@ function chapterToSource(chapter: Questbook['chapters'][number]): ChapterSource 
     ...(chapter.defaultQuestShape !== '' ? { defaultQuestShape: chapter.defaultQuestShape } : {}),
     filename: chapter.filename,
     group: chapter.group,
-    icon: chapter.icon,
+    icon: itemStackToSource(chapter.icon),
     key: chapter.key,
     ...(chapter.progressionMode !== 'default' ? { progressionMode: chapter.progressionMode } : {}),
     quests: chapter.quests.map(questToSource),
@@ -72,7 +77,13 @@ function rewardToSource(
 ): RewardSource {
   return {
     ...(reward.autoClaim !== 'default' ? { autoClaim: reward.autoClaim } : {}),
+    ...(reward.disableRewardScreenBlur ? { disableRewardScreenBlur: true } : {}),
+    ...(reward.excludeFromClaimAll ? { excludeFromClaimAll: true } : {}),
+    ...(reward.icon === undefined ? {} : { icon: itemStackToSource(reward.icon) }),
+    ...(reward.ignoreRewardBlocking ? { ignoreRewardBlocking: true } : {}),
     key: reward.localKey,
+    ...(reward.tags.length > 0 ? { tags: [...reward.tags] } : {}),
+    ...(reward.teamReward === undefined ? {} : { teamReward: reward.teamReward }),
     ...(Object.keys(reward.title).length > 0 ? { title: reward.title } : {}),
     type: 'xp',
     xp: reward.xp,
@@ -83,8 +94,11 @@ function taskToSource(
   task: Questbook['chapters'][number]['quests'][number]['tasks'][number],
 ): TaskSource {
   const common = {
+    ...(task.disableToast ? { disableToast: true } : {}),
+    ...(task.icon === undefined ? {} : { icon: itemStackToSource(task.icon) }),
     key: task.localKey,
     ...(task.optional ? { optional: true } : {}),
+    ...(task.tags.length > 0 ? { tags: [...task.tags] } : {}),
     ...(Object.keys(task.title).length > 0 ? { title: task.title } : {}),
   };
   if (task.type === 'advancement') {
@@ -99,10 +113,22 @@ function taskToSource(
     ...common,
     ...(task.consumeItems === undefined ? {} : { consumeItems: task.consumeItems }),
     ...(task.count !== 1 ? { count: task.count } : {}),
-    item: task.item,
+    item: itemStackToSource(task.item),
     ...(task.matchComponents !== 'none' ? { matchComponents: task.matchComponents } : {}),
     ...(task.onlyFromCrafting === undefined ? {} : { onlyFromCrafting: task.onlyFromCrafting }),
     ...(task.taskScreenOnly ? { taskScreenOnly: true } : {}),
     type: 'item',
+  };
+}
+
+function itemStackToSource(item: ItemStack): ItemStackSource {
+  if (Object.keys(item.components).length === 0) {
+    return item.id;
+  }
+  return {
+    components: Object.fromEntries(
+      Object.entries(item.components).map(([id, snbt]) => [id, { snbt }]),
+    ),
+    id: item.id,
   };
 }

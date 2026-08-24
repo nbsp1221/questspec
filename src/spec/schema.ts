@@ -4,6 +4,29 @@ const resourceLocation = {
   pattern: '^[a-z0-9_.-]+:[a-z0-9_./-]+$',
   type: 'string',
 } as const;
+const itemStack = {
+  oneOf: [
+    resourceLocation,
+    {
+      additionalProperties: false,
+      properties: {
+        components: {
+          additionalProperties: {
+            additionalProperties: false,
+            properties: { snbt: { minLength: 1, type: 'string' } },
+            required: ['snbt'],
+            type: 'object',
+          },
+          propertyNames: resourceLocation,
+          type: 'object',
+        },
+        id: resourceLocation,
+      },
+      required: ['id'],
+      type: 'object',
+    },
+  ],
+} as const;
 const localizedText = {
   additionalProperties: { type: 'string' },
   minProperties: 1,
@@ -30,13 +53,22 @@ const point = {
   type: 'object',
 } as const;
 const taskBaseProperties = {
+  disableToast: { type: 'boolean' },
+  icon: itemStack,
   key: logicalKey,
   optional: { type: 'boolean' },
+  tags: { items: resourceLocation, type: 'array', uniqueItems: true },
   title: localizedText,
 } as const;
 const rewardBaseProperties = {
   autoClaim: { enum: ['default', 'disabled', 'enabled'], type: 'string' },
+  disableRewardScreenBlur: { type: 'boolean' },
+  excludeFromClaimAll: { type: 'boolean' },
+  icon: itemStack,
+  ignoreRewardBlocking: { type: 'boolean' },
   key: logicalKey,
+  tags: { items: resourceLocation, type: 'array', uniqueItems: true },
+  teamReward: { type: 'boolean' },
   title: localizedText,
 } as const;
 
@@ -52,7 +84,7 @@ export const questSpecSchema = {
           defaultQuestShape: { type: 'string' },
           filename: { pattern: '^[a-z0-9][a-z0-9_-]*$', type: 'string' },
           group: logicalKey,
-          icon: resourceLocation,
+          icon: itemStack,
           key: logicalKey,
           progressionMode: { enum: ['default', 'flexible', 'linear'], type: 'string' },
           quests: {
@@ -103,7 +135,7 @@ export const questSpecSchema = {
                           ...taskBaseProperties,
                           consumeItems: { type: 'boolean' },
                           count: { minimum: 1, type: 'integer' },
-                          item: resourceLocation,
+                          item: itemStack,
                           matchComponents: {
                             enum: ['none', 'fuzzy', 'strict'],
                             type: 'string',
@@ -179,7 +211,7 @@ export const questSpecSchema = {
         dropLootCrates: { type: 'boolean' },
         emergencyItemsCooldown: { minimum: 0, type: 'integer' },
         gridScale: { exclusiveMinimum: 0, type: 'number' },
-        icon: resourceLocation,
+        icon: itemStack,
         lockMessage: { type: 'string' },
         pauseGame: { type: 'boolean' },
         progressionMode: { enum: ['default', 'flexible', 'linear'], type: 'string' },

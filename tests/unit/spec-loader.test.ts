@@ -43,6 +43,52 @@ chapters:
 `;
 
 describe('loadQuestSpec', () => {
+  it('normalizes typed item components and common task and reward metadata', () => {
+    const source = validSource
+      .replace(
+        '            item: minecraft:iron_ingot',
+        `            item:
+              id: minecraft:iron_ingot
+              components:
+                minecraft:damage:
+                  snbt: '1'
+            icon:
+              id: minecraft:iron_pickaxe
+              components:
+                minecraft:damage:
+                  snbt: '2'
+            tags: [questspec:production]
+            disableToast: true`,
+      )
+      .replace(
+        '            xp: 100',
+        `            xp: 100
+            teamReward: true
+            excludeFromClaimAll: true
+            icon: minecraft:experience_bottle
+            tags: [questspec:milestone]`,
+      );
+
+    const result = loadQuestbook(source, 'questbook.yaml');
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.value?.chapters[0]?.quests[0]?.tasks[0]).toMatchObject({
+      disableToast: true,
+      icon: { components: { 'minecraft:damage': '2' } },
+      item: {
+        components: { 'minecraft:damage': '1' },
+        id: 'minecraft:iron_ingot',
+      },
+      tags: ['questspec:production'],
+    });
+    expect(result.value?.chapters[0]?.quests[0]?.rewards[0]).toMatchObject({
+      excludeFromClaimAll: true,
+      icon: { id: 'minecraft:experience_bottle' },
+      tags: ['questspec:milestone'],
+      teamReward: true,
+    });
+  });
+
   it('loads a valid bilingual questbook into the semantic source model', () => {
     const result = loadQuestSpec(validSource, 'questbook.yaml');
 
@@ -101,7 +147,7 @@ describe('loadQuestSpec', () => {
       tasks: [
         {
           count: 1,
-          item: 'minecraft:iron_ingot',
+          item: { components: {}, id: 'minecraft:iron_ingot' },
           key: 'foundations.first_iron.iron',
           matchComponents: 'none',
           type: 'item',

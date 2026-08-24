@@ -7,7 +7,7 @@ const questbook: Questbook = {
       defaultQuestShape: '',
       filename: '01_foundations',
       group: 'industry',
-      icon: 'minecraft:iron_pickaxe',
+      icon: { components: {}, id: 'minecraft:iron_pickaxe' },
       key: 'foundations',
       localKey: 'foundations',
       progressionMode: 'default',
@@ -27,11 +27,13 @@ const questbook: Questbook = {
           tasks: [
             {
               count: 1,
-              item: 'minecraft:oak_log',
+              disableToast: false,
+              item: { components: {}, id: 'minecraft:oak_log' },
               key: 'foundations.start.log',
               localKey: 'log',
               matchComponents: 'none',
               optional: false,
+              tags: [],
               taskScreenOnly: false,
               title: {},
               type: 'item',
@@ -53,8 +55,12 @@ const questbook: Questbook = {
           rewards: [
             {
               autoClaim: 'default',
+              disableRewardScreenBlur: false,
+              excludeFromClaimAll: false,
+              ignoreRewardBlocking: false,
               key: 'foundations.finish.experience',
               localKey: 'experience',
+              tags: [],
               title: {},
               type: 'xp',
               xp: 100,
@@ -66,9 +72,11 @@ const questbook: Questbook = {
             {
               advancement: 'minecraft:story/root',
               criterion: '',
+              disableToast: false,
               key: 'foundations.finish.root',
               localKey: 'root',
               optional: false,
+              tags: [],
               title: {},
               type: 'advancement',
             },

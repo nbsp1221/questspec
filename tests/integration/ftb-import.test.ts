@@ -7,6 +7,33 @@ import { compileFtbQuests2101 } from '../../src/targets/ftbquests-2101.1.33/enco
 import { createQuestbookFixture } from '../helpers/questbook.ts';
 
 describe('FTB Quests 2101.1.33 import', () => {
+  it('round-trips component-aware item stacks and common object metadata', () => {
+    const questbook = createQuestbookFixture();
+    const task = questbook.chapters[0].quests[0].tasks[0];
+    if (task.type !== 'item') {
+      throw new Error('Expected item task fixture');
+    }
+    task.item = {
+      components: { 'minecraft:damage': '1' },
+      id: 'minecraft:oak_log',
+    };
+    task.icon = { components: {}, id: 'minecraft:iron_pickaxe' };
+    task.tags = ['questspec:production'];
+    task.disableToast = true;
+    const reward = questbook.chapters[0].quests[1].rewards[0];
+    reward.icon = { components: {}, id: 'minecraft:experience_bottle' };
+    reward.tags = ['questspec:milestone'];
+    reward.teamReward = true;
+    reward.excludeFromClaimAll = true;
+
+    const compiled = compileFtbQuests2101(questbook);
+    const imported = decodeFtbQuests2101(compiled.files, compiled.ids);
+
+    expect(imported.questbook.chapters[0].quests[0].tasks[0]).toEqual(task);
+    expect(imported.questbook.chapters[0].quests[1].rewards[0]).toEqual(reward);
+    expect(compiled.files.get('chapters/01_foundations.snbt')).toContain('"minecraft:damage": 1');
+  });
+
   it('preserves semantic content and physical IDs through import and recompilation', () => {
     const original = compileFtbQuests2101(createQuestbookFixture());
     const imported = decodeFtbQuests2101(original.files);

@@ -2,6 +2,7 @@ import type { PhysicalIdMap, PhysicalObjectKind } from '../../identity/physical-
 import type {
   Chapter,
   ChapterGroup,
+  ItemStack,
   ItemTask,
   Quest,
   Questbook,
@@ -11,6 +12,7 @@ import type {
 import type { SnbtCompound, SnbtTag } from '../../snbt/ast.ts';
 import { allocatePhysicalIds, physicalIdKey } from '../../identity/physical-id.ts';
 import { parseSnbtCompound } from '../../snbt/parser.ts';
+import { writeSnbt } from '../../snbt/writer.ts';
 import { validateQuestbook } from '../../validation/questbook.ts';
 import { ftbQuests2101Profile } from './profile.ts';
 
@@ -358,15 +360,27 @@ function decodeTask(
       ? [
           'consume_items',
           'count',
+          'disable_toast',
+          'icon',
           'id',
           'item',
           'match_components',
           'only_from_crafting',
           'optional_task',
           'task_screen_only',
+          'tags',
           'type',
         ]
-      : ['advancement', 'criterion', 'id', 'optional_task', 'type'],
+      : [
+          'advancement',
+          'criterion',
+          'disable_toast',
+          'icon',
+          'id',
+          'optional_task',
+          'tags',
+          'type',
+        ],
     path,
   );
   const fallbackLocalKey = logicalKey('task', physicalId);
@@ -375,6 +389,8 @@ function decodeTask(
   const localKey = localKeyForParent(key, questKey, fallbackLocalKey);
   recordId(ids, 'task', key, physicalId);
   const base = {
+    disableToast: optionalBoolean(compound, 'disable_toast') ?? false,
+    ...decodeObjectCommon(compound, path),
     key,
     localKey,
     optional: optionalBoolean(compound, 'optional_task') ?? false,
@@ -410,7 +426,22 @@ function decodeReward(
   ids: PhysicalIdMap,
   logicalIds: LogicalIdResolver,
 ): Reward {
-  assertOnlyFields(compound, ['auto', 'id', 'type', 'xp'], path);
+  assertOnlyFields(
+    compound,
+    [
+      'auto',
+      'disable_reward_screen_blur',
+      'exclude_from_claim_all',
+      'icon',
+      'id',
+      'ignore_reward_blocking',
+      'tags',
+      'team_reward',
+      'type',
+      'xp',
+    ],
+    path,
+  );
   const physicalId = requiredString(compound, 'id', path);
   const type = requiredString(compound, 'type', path);
   if (type !== 'xp') {
@@ -431,8 +462,13 @@ function decodeReward(
   }
   return {
     autoClaim: autoClaim as Reward['autoClaim'],
+    disableRewardScreenBlur: optionalBoolean(compound, 'disable_reward_screen_blur') ?? false,
+    excludeFromClaimAll: optionalBoolean(compound, 'exclude_from_claim_all') ?? false,
+    ...decodeObjectCommon(compound, path),
+    ignoreRewardBlocking: optionalBoolean(compound, 'ignore_reward_blocking') ?? false,
     key,
     localKey,
+    teamReward: optionalBoolean(compound, 'team_reward'),
     title: localizedText(locales, translations, 'reward', physicalId, 'title'),
     type: 'xp',
     xp: requiredNumber(compound, 'xp', path),
@@ -816,8 +852,8 @@ function optionalStringList(compound: SnbtCompound, key: string, path: string): 
   });
 }
 
-function decodeItemStack(compound: SnbtCompound, path: string): string {
-  assertOnlyFields(compound, ['count', 'id'], path);
+function decodeItemStack(compound: SnbtCompound, path: string): ItemStack {
+  assertOnlyFields(compound, ['components', 'count', 'id'], path);
   const count = optionalNumber(compound, 'count');
   if (count !== undefined && count !== 1) {
     throw new FtbQuestbookImportError(
@@ -826,7 +862,32 @@ function decodeItemStack(compound: SnbtCompound, path: string): string {
       `${path}.count`,
     );
   }
-  return requiredString(compound, 'id', path);
+  const components = optionalTag(compound, 'components');
+  return {
+    components:
+      components === undefined
+        ? {}
+        : Object.fromEntries(
+            requiredCompoundTag(components, `${path}.components`).entries.map((entry) => [
+              entry.key,
+              writeSnbt(entry.value).trimEnd(),
+            ]),
+          ),
+    id: requiredString(compound, 'id', path),
+  };
+}
+
+function decodeObjectCommon(
+  compound: SnbtCompound,
+  path: string,
+): { icon?: ItemStack; tags: string[] } {
+  const icon = optionalTag(compound, 'icon');
+  return {
+    ...(icon === undefined
+      ? {}
+      : { icon: decodeItemStack(requiredCompoundTag(icon, `${path}.icon`), `${path}.icon`) }),
+    tags: optionalStringList(compound, 'tags', path),
+  };
 }
 
 function decodeProgressionMode(

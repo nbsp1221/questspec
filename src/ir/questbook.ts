@@ -16,31 +16,49 @@ interface QuestObjectIdentity {
   localKey: string;
 }
 
-export interface ItemTask extends QuestObjectIdentity {
+export interface ItemStack {
+  components: Record<string, string>;
+  id: string;
+}
+
+interface TaskBase extends QuestObjectIdentity {
+  disableToast: boolean;
+  icon?: ItemStack;
+  optional: boolean;
+  tags: string[];
+  title: LocalizedTextSource;
+}
+
+export interface ItemTask extends TaskBase {
   consumeItems?: boolean;
   count: number;
-  item: string;
+  item: ItemStack;
   matchComponents: 'fuzzy' | 'none' | 'strict';
   onlyFromCrafting?: boolean;
-  optional: boolean;
   taskScreenOnly: boolean;
-  title: LocalizedTextSource;
   type: 'item';
 }
 
-export interface AdvancementTask extends QuestObjectIdentity {
+export interface AdvancementTask extends TaskBase {
   advancement: string;
   criterion: string;
-  optional: boolean;
-  title: LocalizedTextSource;
   type: 'advancement';
 }
 
 export type Task = AdvancementTask | ItemTask;
 
-export interface XpReward extends QuestObjectIdentity {
+interface RewardBase extends QuestObjectIdentity {
   autoClaim: 'default' | 'disabled' | 'enabled';
+  disableRewardScreenBlur: boolean;
+  excludeFromClaimAll: boolean;
+  icon?: ItemStack;
+  ignoreRewardBlocking: boolean;
+  tags: string[];
+  teamReward?: boolean;
   title: LocalizedTextSource;
+}
+
+export interface XpReward extends RewardBase {
   type: 'xp';
   xp: number;
 }
@@ -68,7 +86,7 @@ export interface Chapter extends QuestObjectIdentity {
   defaultQuestShape: string;
   filename: string;
   group: string;
-  icon: string;
+  icon: ItemStack;
   progressionMode: 'default' | 'flexible' | 'linear';
   quests: Quest[];
   title: LocalizedTextSource;
@@ -79,6 +97,6 @@ export interface Questbook {
   defaultLocale: string;
   groups: ChapterGroup[];
   locales: string[];
-  settings: QuestbookSettingsSource;
+  settings: Omit<QuestbookSettingsSource, 'icon'> & { icon?: ItemStack };
   target: TargetProfileSource;
 }

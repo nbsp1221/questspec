@@ -98,15 +98,15 @@ export function validateQuestbookResources(
   };
 
   if (questbook.settings.icon !== undefined) {
-    checkItem(questbook.settings.icon, ['settings', 'icon']);
+    checkItem(questbook.settings.icon.id, ['settings', 'icon']);
   }
   questbook.chapters.forEach((chapter, chapterIndex) => {
-    checkItem(chapter.icon, ['chapters', chapterIndex, 'icon']);
+    checkItem(chapter.icon.id, ['chapters', chapterIndex, 'icon']);
     chapter.quests.forEach((quest, questIndex) => {
       quest.tasks.forEach((task, taskIndex) => {
         const path = ['chapters', chapterIndex, 'quests', questIndex, 'tasks', taskIndex];
         if (task.type === 'item') {
-          checkItem(task.item, [...path, 'item']);
+          checkItem(task.item.id, [...path, 'item']);
           return;
         }
         const criteria = catalog.advancements.get(task.advancement);

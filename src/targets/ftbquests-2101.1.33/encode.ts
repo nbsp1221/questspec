@@ -2,6 +2,7 @@ import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type {
   AdvancementTask,
   Chapter,
+  ItemStack,
   ItemTask,
   Quest,
   Questbook,
@@ -26,6 +27,7 @@ import {
   snbtString,
   snbtStringList,
 } from '../../snbt/build.ts';
+import { parseSnbt } from '../../snbt/parser.ts';
 import { writeSnbt } from '../../snbt/writer.ts';
 import { validateQuestbook } from '../../validation/questbook.ts';
 import { ftbQuests2101Profile } from './profile.ts';
@@ -122,9 +124,7 @@ function encodeAdvancementTask(task: AdvancementTask, ids: PhysicalIdMap): SnbtC
     ['advancement', snbtString(task.advancement)],
     ['criterion', snbtString(task.criterion)],
   ];
-  if (task.optional) {
-    entries.push(['optional_task', snbtBoolean(true)]);
-  }
+  encodeTaskCommon(entries, task);
   return snbtCompound(entries);
 }
 
@@ -198,21 +198,29 @@ function encodeGroups(questbook: Questbook, ids: PhysicalIdMap): SnbtCompound {
   ]);
 }
 
-function encodeItemStack(item: string): SnbtCompound {
-  return snbtCompound([['id', snbtString(item)]]);
+function encodeItemStack(item: ItemStack, includeCount = false): SnbtCompound {
+  const entries: Array<[string, SnbtTag]> = [['id', snbtString(item.id)]];
+  if (includeCount) {
+    entries.push(['count', snbtInt(1)]);
+  }
+  if (Object.keys(item.components).length > 0) {
+    entries.push([
+      'components',
+      snbtCompound(
+        Object.entries(item.components)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([id, source]) => [id, parseSnbt(source)]),
+      ),
+    ]);
+  }
+  return snbtCompound(entries);
 }
 
 function encodeItemTask(task: ItemTask, ids: PhysicalIdMap): SnbtCompound {
   const entries: Array<[string, SnbtTag]> = [
     ['id', snbtString(idFor(ids, 'task', task.key))],
     ['type', snbtString('item')],
-    [
-      'item',
-      snbtCompound([
-        ['id', snbtString(task.item)],
-        ['count', snbtInt(1)],
-      ]),
-    ],
+    ['item', encodeItemStack(task.item, true)],
   ];
   if (task.count > 1) {
     entries.push(['count', snbtLong(task.count)]);
@@ -229,9 +237,7 @@ function encodeItemTask(task: ItemTask, ids: PhysicalIdMap): SnbtCompound {
   if (task.taskScreenOnly) {
     entries.push(['task_screen_only', snbtBoolean(true)]);
   }
-  if (task.optional) {
-    entries.push(['optional_task', snbtBoolean(true)]);
-  }
+  encodeTaskCommon(entries, task);
   return snbtCompound(entries);
 }
 
@@ -290,7 +296,42 @@ function encodeReward(reward: Reward, ids: PhysicalIdMap): SnbtCompound {
   if (reward.autoClaim !== 'default') {
     entries.push(['auto', snbtString(reward.autoClaim)]);
   }
+  if (reward.teamReward !== undefined) {
+    entries.push(['team_reward', snbtBoolean(reward.teamReward)]);
+  }
+  if (reward.excludeFromClaimAll) {
+    entries.push(['exclude_from_claim_all', snbtBoolean(true)]);
+  }
+  if (reward.ignoreRewardBlocking) {
+    entries.push(['ignore_reward_blocking', snbtBoolean(true)]);
+  }
+  if (reward.disableRewardScreenBlur) {
+    entries.push(['disable_reward_screen_blur', snbtBoolean(true)]);
+  }
+  encodeObjectCommon(entries, reward);
   return snbtCompound(entries);
+}
+
+function encodeObjectCommon(
+  entries: Array<[string, SnbtTag]>,
+  object: { icon?: ItemStack; tags: string[] },
+): void {
+  if (object.icon !== undefined) {
+    entries.push(['icon', encodeItemStack(object.icon)]);
+  }
+  if (object.tags.length > 0) {
+    entries.push(['tags', snbtStringList(object.tags)]);
+  }
+}
+
+function encodeTaskCommon(entries: Array<[string, SnbtTag]>, task: Task): void {
+  if (task.optional) {
+    entries.push(['optional_task', snbtBoolean(true)]);
+  }
+  if (task.disableToast) {
+    entries.push(['disable_toast', snbtBoolean(true)]);
+  }
+  encodeObjectCommon(entries, task);
 }
 
 function encodeTask(task: Task, ids: PhysicalIdMap): SnbtCompound {

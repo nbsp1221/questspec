@@ -14,6 +14,13 @@ export interface LocaleSource {
 export type LocalizedTextSource = Record<string, string>;
 export type LocalizedLinesSource = Record<string, string[]>;
 
+export interface ItemStackObjectSource {
+  components?: Record<string, { snbt: string }>;
+  id: string;
+}
+
+export type ItemStackSource = ItemStackObjectSource | string;
+
 export interface ChapterGroupSource {
   key: string;
   title?: LocalizedTextSource;
@@ -24,16 +31,19 @@ export interface PointSource {
   y: number;
 }
 
-interface TaskSourceBase {
+export interface TaskSourceBase {
+  disableToast?: boolean;
+  icon?: ItemStackSource;
   key: string;
   optional?: boolean;
+  tags?: string[];
   title?: LocalizedTextSource;
 }
 
 export interface ItemTaskSource extends TaskSourceBase {
   consumeItems?: boolean;
   count?: number;
-  item: string;
+  item: ItemStackSource;
   matchComponents?: 'fuzzy' | 'none' | 'strict';
   onlyFromCrafting?: boolean;
   taskScreenOnly?: boolean;
@@ -48,9 +58,15 @@ export interface AdvancementTaskSource extends TaskSourceBase {
 
 export type TaskSource = AdvancementTaskSource | ItemTaskSource;
 
-interface RewardSourceBase {
+export interface RewardSourceBase {
   autoClaim?: 'default' | 'disabled' | 'enabled';
+  disableRewardScreenBlur?: boolean;
+  excludeFromClaimAll?: boolean;
+  icon?: ItemStackSource;
+  ignoreRewardBlocking?: boolean;
   key: string;
+  tags?: string[];
+  teamReward?: boolean;
   title?: LocalizedTextSource;
 }
 
@@ -83,7 +99,7 @@ export interface ChapterSource {
   defaultQuestShape?: string;
   filename: string;
   group: string;
-  icon: string;
+  icon: ItemStackSource;
   key: string;
   progressionMode?: 'default' | 'flexible' | 'linear';
   quests: QuestSource[];
@@ -101,7 +117,7 @@ export interface QuestbookSettingsSource {
   dropLootCrates?: boolean;
   emergencyItemsCooldown?: number;
   gridScale?: number;
-  icon?: string;
+  icon?: ItemStackSource;
   lockMessage?: string;
   pauseGame?: boolean;
   progressionMode?: 'default' | 'flexible' | 'linear';

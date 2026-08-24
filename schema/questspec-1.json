@@ -21,8 +21,41 @@
             "type": "string"
           },
           "icon": {
-            "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
-            "type": "string"
+            "oneOf": [
+              {
+                "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                "type": "string"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "components": {
+                    "additionalProperties": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "snbt": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": ["snbt"],
+                      "type": "object"
+                    },
+                    "propertyNames": {
+                      "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                    "type": "string"
+                  }
+                },
+                "required": ["id"],
+                "type": "object"
+              }
+            ]
           },
           "key": {
             "pattern": "^[a-z0-9][a-z0-9_.-]*$",
@@ -114,9 +147,66 @@
                             "enum": ["default", "disabled", "enabled"],
                             "type": "string"
                           },
+                          "disableRewardScreenBlur": {
+                            "type": "boolean"
+                          },
+                          "excludeFromClaimAll": {
+                            "type": "boolean"
+                          },
+                          "icon": {
+                            "oneOf": [
+                              {
+                                "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                                "type": "string"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "components": {
+                                    "additionalProperties": {
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "snbt": {
+                                          "minLength": 1,
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": ["snbt"],
+                                      "type": "object"
+                                    },
+                                    "propertyNames": {
+                                      "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                                      "type": "string"
+                                    },
+                                    "type": "object"
+                                  },
+                                  "id": {
+                                    "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["id"],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "ignoreRewardBlocking": {
+                            "type": "boolean"
+                          },
                           "key": {
                             "pattern": "^[a-z0-9][a-z0-9_.-]*$",
                             "type": "string"
+                          },
+                          "tags": {
+                            "items": {
+                              "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "uniqueItems": true
+                          },
+                          "teamReward": {
+                            "type": "boolean"
                           },
                           "title": {
                             "additionalProperties": {
@@ -164,12 +254,60 @@
                       {
                         "additionalProperties": false,
                         "properties": {
+                          "disableToast": {
+                            "type": "boolean"
+                          },
+                          "icon": {
+                            "oneOf": [
+                              {
+                                "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                                "type": "string"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "components": {
+                                    "additionalProperties": {
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "snbt": {
+                                          "minLength": 1,
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": ["snbt"],
+                                      "type": "object"
+                                    },
+                                    "propertyNames": {
+                                      "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                                      "type": "string"
+                                    },
+                                    "type": "object"
+                                  },
+                                  "id": {
+                                    "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["id"],
+                                "type": "object"
+                              }
+                            ]
+                          },
                           "key": {
                             "pattern": "^[a-z0-9][a-z0-9_.-]*$",
                             "type": "string"
                           },
                           "optional": {
                             "type": "boolean"
+                          },
+                          "tags": {
+                            "items": {
+                              "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "uniqueItems": true
                           },
                           "title": {
                             "additionalProperties": {
@@ -195,8 +333,41 @@
                             "type": "integer"
                           },
                           "item": {
-                            "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
-                            "type": "string"
+                            "oneOf": [
+                              {
+                                "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                                "type": "string"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "components": {
+                                    "additionalProperties": {
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "snbt": {
+                                          "minLength": 1,
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": ["snbt"],
+                                      "type": "object"
+                                    },
+                                    "propertyNames": {
+                                      "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                                      "type": "string"
+                                    },
+                                    "type": "object"
+                                  },
+                                  "id": {
+                                    "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["id"],
+                                "type": "object"
+                              }
+                            ]
                           },
                           "matchComponents": {
                             "enum": ["none", "fuzzy", "strict"],
@@ -219,12 +390,60 @@
                       {
                         "additionalProperties": false,
                         "properties": {
+                          "disableToast": {
+                            "type": "boolean"
+                          },
+                          "icon": {
+                            "oneOf": [
+                              {
+                                "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                                "type": "string"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "components": {
+                                    "additionalProperties": {
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "snbt": {
+                                          "minLength": 1,
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": ["snbt"],
+                                      "type": "object"
+                                    },
+                                    "propertyNames": {
+                                      "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                                      "type": "string"
+                                    },
+                                    "type": "object"
+                                  },
+                                  "id": {
+                                    "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["id"],
+                                "type": "object"
+                              }
+                            ]
+                          },
                           "key": {
                             "pattern": "^[a-z0-9][a-z0-9_.-]*$",
                             "type": "string"
                           },
                           "optional": {
                             "type": "boolean"
+                          },
+                          "tags": {
+                            "items": {
+                              "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "uniqueItems": true
                           },
                           "title": {
                             "additionalProperties": {
@@ -404,8 +623,41 @@
           "type": "number"
         },
         "icon": {
-          "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
-          "type": "string"
+          "oneOf": [
+            {
+              "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+              "type": "string"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "components": {
+                  "additionalProperties": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "snbt": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": ["snbt"],
+                    "type": "object"
+                  },
+                  "propertyNames": {
+                    "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "id": {
+                  "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                  "type": "string"
+                }
+              },
+              "required": ["id"],
+              "type": "object"
+            }
+          ]
         },
         "lockMessage": {
           "type": "string"
