@@ -23,4 +23,16 @@ describe('FTB-SNBT contract', () => {
 
     expect(snbtSemanticallyEqual(left, right)).toBe(true);
   });
+
+  it('writes sorted FTB-style multiline collections and explicit decimal types', () => {
+    const parsed = parseSnbt('{ z: 0.0d a: [1, 2] }');
+
+    expect(writeSnbt(parsed)).toBe(`{
+\ta: [
+\t\t1
+\t\t2
+\t]
+\tz: 0.0d
+}\n`);
+  });
 });

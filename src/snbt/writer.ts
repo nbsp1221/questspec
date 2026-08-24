@@ -15,7 +15,7 @@ export function writeSnbt(tag: SnbtTag, options: WriteSnbtOptions = {}): string 
   return `${writeTag(tag, 0, context)}\n`;
 }
 
-function formatNumber(value: number): string {
+function formatNumber(value: number, explicitDecimal = false): string {
   if (Number.isNaN(value)) {
     return 'NaN';
   }
@@ -26,9 +26,9 @@ function formatNumber(value: number): string {
     return '-Infinity';
   }
   if (Object.is(value, -0)) {
-    return '-0';
+    return explicitDecimal ? '-0.0' : '-0';
   }
-  return String(value);
+  return explicitDecimal && Number.isInteger(value) ? `${value}.0` : String(value);
 }
 
 function quote(value: string): string {
@@ -55,7 +55,9 @@ function writeCompound(
     return '{ }';
   }
   const entries = context.sortKeys
-    ? [...tag.entries].sort((left, right) => left.key.localeCompare(right.key, 'en'))
+    ? [...tag.entries].sort((left, right) =>
+        left.key < right.key ? -1 : left.key > right.key ? 1 : 0,
+      )
     : tag.entries;
   const indentation = context.indent.repeat(depth + 1);
   const closingIndentation = context.indent.repeat(depth);
@@ -64,6 +66,23 @@ function writeCompound(
     return `${indentation}${key}: ${writeTag(entry.value, depth + 1, context)}`;
   });
   return `{\n${lines.join('\n')}\n${closingIndentation}}`;
+}
+
+function writeList(
+  tag: SnbtTag & { type: 'list' },
+  depth: number,
+  context: Required<WriteSnbtOptions>,
+) {
+  if (tag.value.length === 0) {
+    return '[ ]';
+  }
+  if (tag.value.length === 1) {
+    return `[${writeTag(tag.value[0], depth, context)}]`;
+  }
+  const indentation = context.indent.repeat(depth + 1);
+  const closingIndentation = context.indent.repeat(depth);
+  const lines = tag.value.map((value) => `${indentation}${writeTag(value, depth + 1, context)}`);
+  return `[\n${lines.join('\n')}\n${closingIndentation}]`;
 }
 
 function writeTag(tag: SnbtTag, depth: number, context: Required<WriteSnbtOptions>): string {
@@ -79,19 +98,17 @@ function writeTag(tag: SnbtTag, depth: number, context: Required<WriteSnbtOption
     case 'compound':
       return writeCompound(tag, depth, context);
     case 'double':
-      return `${formatNumber(tag.value)}d`;
+      return `${formatNumber(tag.value, true)}d`;
     case 'end':
       return 'null';
     case 'float':
-      return `${formatNumber(tag.value)}f`;
+      return `${formatNumber(tag.value, true)}f`;
     case 'int':
       return String(tag.value);
     case 'int-array':
       return writeArray('I', tag.value, '');
     case 'list':
-      return tag.value.length === 0
-        ? '[ ]'
-        : `[${tag.value.map((value) => writeTag(value, depth, context)).join(',')}]`;
+      return writeList(tag, depth, context);
     case 'long':
       return `${tag.value}L`;
     case 'long-array':

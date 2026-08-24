@@ -51,8 +51,8 @@ export interface Quest extends QuestObjectIdentity {
   dependencies: string[];
   dependencyControlPoints: Record<string, PointSource[]>;
   description: LocalizedLinesSource;
-  hideDependencyLines: boolean;
-  hideUntilDependenciesVisible: boolean;
+  hideDependencyLines?: boolean;
+  hideUntilDependenciesVisible?: boolean;
   optional: boolean;
   rewards: Reward[];
   shape: string;

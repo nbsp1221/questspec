@@ -61,7 +61,12 @@ export const questSpecSchema = {
               properties: {
                 dependencies: { items: logicalKey, type: 'array', uniqueItems: true },
                 dependencyControlPoints: {
-                  additionalProperties: { items: point, type: 'array' },
+                  additionalProperties: {
+                    items: point,
+                    maxItems: 2,
+                    minItems: 2,
+                    type: 'array',
+                  },
                   propertyNames: logicalKey,
                   type: 'object',
                 },
