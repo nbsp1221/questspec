@@ -28,7 +28,16 @@ function formatNumber(value: number, explicitDecimal = false): string {
   if (Object.is(value, -0)) {
     return explicitDecimal ? '-0.0' : '-0';
   }
-  return explicitDecimal && Number.isInteger(value) ? `${value}.0` : String(value);
+  const formatted = String(value);
+  if (!explicitDecimal || !Number.isInteger(value)) {
+    return formatted;
+  }
+  const exponentIndex = formatted.search(/[eE]/u);
+  if (exponentIndex === -1) {
+    return `${formatted}.0`;
+  }
+  const mantissa = formatted.slice(0, exponentIndex);
+  return mantissa.includes('.') ? formatted : `${mantissa}.0${formatted.slice(exponentIndex)}`;
 }
 
 function quote(value: string): string {

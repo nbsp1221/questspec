@@ -1,10 +1,11 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   type AtomicOutputError,
   writeDirectoryAtomic,
+  writeFileSetAtomic,
 } from '../../src/filesystem/atomic-output.ts';
 
 describe('atomic directory output', () => {
@@ -46,5 +47,28 @@ describe('atomic directory output', () => {
     );
     await expect(readFile(join(destination, 'existing.snbt'), 'utf8')).resolves.toBe('safe');
     await expect(readFile(join(root, 'outside.snbt'), 'utf8')).resolves.toBe('outside');
+  });
+});
+
+describe('atomic file-set output', () => {
+  it('leaves existing files intact when another destination is not a file', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'questspec-atomic-set-'));
+    const existingFile = join(root, 'questbook.yml');
+    const directoryTarget = join(root, 'questbook.ids.json');
+    await writeFile(existingFile, 'original', 'utf8');
+    await mkdir(directoryTarget);
+
+    await expect(
+      writeFileSetAtomic(
+        new Map([
+          [existingFile, 'replacement'],
+          [directoryTarget, '{}\n'],
+        ]),
+        { overwrite: true },
+      ),
+    ).rejects.toEqual(
+      expect.objectContaining<Partial<AtomicOutputError>>({ code: 'OUTPUT_UNSAFE_PATH' }),
+    );
+    await expect(readFile(existingFile, 'utf8')).resolves.toBe('original');
   });
 });

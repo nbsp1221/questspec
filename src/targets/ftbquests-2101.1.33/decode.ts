@@ -135,13 +135,6 @@ export function decodeFtbQuests2101(
   const chapterFiles = [...files.entries()]
     .filter(([path]) => /^chapters\/[a-z0-9][a-z0-9_-]*\.snbt$/u.test(path))
     .sort(([left], [right]) => left.localeCompare(right));
-  if (chapterFiles.length === 0) {
-    throw new FtbQuestbookImportError(
-      'IMPORT_MISSING_FILE',
-      'The questbook must contain at least one chapters/*.snbt file',
-      'chapters',
-    );
-  }
 
   const questByPhysicalId = new Map<string, string>();
   const chaptersWithOrder = chapterFiles.map(([path, source]) =>
@@ -411,9 +404,14 @@ function decodeQuest(
   );
   const physicalId = requiredString(compound, 'id', path);
   const fallbackLocalKey = logicalKey('quest', physicalId);
-  const preferredKey = logicalIds.get('quest', physicalId);
-  const key = preferredKey ?? `${chapterKey}.${fallbackLocalKey}`;
-  const localKey = localKeyForParent(key, chapterKey, fallbackLocalKey);
+  const { key, localKey } = nestedLogicalIdentity(
+    'quest',
+    physicalId,
+    chapterKey,
+    fallbackLocalKey,
+    logicalIds,
+    `${path}.id`,
+  );
   recordId(ids, 'quest', key, physicalId);
   questByPhysicalId.set(physicalId, key);
   const dependencyPhysicalIds = optionalStringList(compound, 'dependencies', path);
@@ -508,9 +506,14 @@ function decodeTask(
   };
   assertOnlyFields(compound, [...commonFields, ...specificFields[type]], path);
   const fallbackLocalKey = logicalKey('task', physicalId);
-  const preferredKey = logicalIds.get('task', physicalId);
-  const key = preferredKey ?? `${questKey}.${fallbackLocalKey}`;
-  const localKey = localKeyForParent(key, questKey, fallbackLocalKey);
+  const { key, localKey } = nestedLogicalIdentity(
+    'task',
+    physicalId,
+    questKey,
+    fallbackLocalKey,
+    logicalIds,
+    `${path}.id`,
+  );
   recordId(ids, 'task', key, physicalId);
   const base = {
     disableToast: optionalBoolean(compound, 'disable_toast') ?? false,
@@ -663,9 +666,14 @@ function decodeReward(
     );
   }
   const fallbackLocalKey = logicalKey('reward', physicalId);
-  const preferredKey = logicalIds.get('reward', physicalId);
-  const key = preferredKey ?? `${questKey}.${fallbackLocalKey}`;
-  const localKey = localKeyForParent(key, questKey, fallbackLocalKey);
+  const { key, localKey } = nestedLogicalIdentity(
+    'reward',
+    physicalId,
+    questKey,
+    fallbackLocalKey,
+    logicalIds,
+    `${path}.id`,
+  );
   recordId(ids, 'reward', key, physicalId);
   const autoClaim = optionalString(compound, 'auto') ?? 'default';
   if (!['default', 'disabled', 'enabled'].includes(autoClaim)) {
@@ -990,9 +998,26 @@ function logicalKey(kind: string, physicalId: string): string {
   return `${kind}_${physicalId.toLowerCase()}`;
 }
 
-function localKeyForParent(key: string, parent: string, fallback: string): string {
+function nestedLogicalIdentity(
+  kind: Extract<PhysicalObjectKind, 'quest' | 'reward' | 'task'>,
+  physicalId: string,
+  parent: string,
+  fallback: string,
+  logicalIds: LogicalIdResolver,
+  path: string,
+): { key: string; localKey: string } {
+  const preferredKey = logicalIds.get(kind, physicalId);
+  if (preferredKey === undefined) {
+    return { key: `${parent}.${fallback}`, localKey: fallback };
+  }
   const prefix = `${parent}.`;
-  return key.startsWith(prefix) ? key.slice(prefix.length) : fallback;
+  if (!preferredKey.startsWith(prefix)) {
+    throw invalidField(
+      path,
+      `Known ${kind} ID ${physicalId} belongs to ${preferredKey}, not parent ${parent}; migrate the ID map explicitly`,
+    );
+  }
+  return { key: preferredKey, localKey: preferredKey.slice(prefix.length) };
 }
 
 function createLogicalIdResolver(ids: PhysicalIdMap): LogicalIdResolver {

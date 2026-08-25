@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { snbtCompound, snbtDouble, snbtFloat } from '../../src/snbt/build.ts';
 import { snbtSemanticallyEqual } from '../../src/snbt/compare.ts';
 import { parseSnbt } from '../../src/snbt/parser.ts';
 import { writeSnbt } from '../../src/snbt/writer.ts';
@@ -34,5 +35,23 @@ describe('FTB-SNBT contract', () => {
 \t]
 \tz: 0.0d
 }\n`);
+  });
+
+  it('writes exponent-form floating-point values with a valid decimal mantissa', () => {
+    const value = snbtCompound([
+      ['double', snbtDouble(1e21)],
+      ['float', snbtFloat(-1e21)],
+    ]);
+    const source = writeSnbt(value);
+
+    expect(source).toContain('double: 1.0e+21d');
+    expect(source).toContain('float: -1.0e+21f');
+    expect(parseSnbt(source)).toMatchObject({
+      entries: [
+        { key: 'double', value: { type: 'double' } },
+        { key: 'float', value: { type: 'float' } },
+      ],
+      type: 'compound',
+    });
   });
 });

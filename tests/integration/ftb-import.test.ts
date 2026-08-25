@@ -272,6 +272,32 @@ describe('FTB Quests 2101.1.33 import', () => {
     expect(new Set(Object.values(imported.ids))).toEqual(new Set(Object.values(original.ids)));
   });
 
+  it('imports a valid questbook with no chapters', () => {
+    const questbook = createQuestbookFixture();
+    questbook.chapters = [];
+    const compiled = compileFtbQuests2101(questbook);
+
+    expect([...compiled.files.keys()].some((path) => path.startsWith('chapters/'))).toBe(false);
+    expect(decodeFtbQuests2101(compiled.files, compiled.ids).questbook.chapters).toEqual([]);
+  });
+
+  it.each([
+    ['quest', 'quest:foundations.start', 'quest:other.start'],
+    ['task', 'task:foundations.start.log', 'task:foundations.other.log'],
+    ['reward', 'reward:foundations.finish.experience', 'reward:foundations.other.experience'],
+  ])(
+    'requires an explicit ID-map migration when a known %s changes parent',
+    (_, oldKey, newKey) => {
+      const compiled = compileFtbQuests2101(createQuestbookFixture());
+      const knownIds = { ...compiled.ids, [newKey]: compiled.ids[oldKey] };
+      delete knownIds[oldKey];
+
+      expect(() => decodeFtbQuests2101(compiled.files, knownIds)).toThrowError(
+        expect.objectContaining<Partial<FtbQuestbookImportError>>({ code: 'IMPORT_INVALID_FIELD' }),
+      );
+    },
+  );
+
   it('fails closed on unsupported target objects', () => {
     const original = compileFtbQuests2101(createQuestbookFixture());
     const chapterPath = 'chapters/01_foundations.snbt';

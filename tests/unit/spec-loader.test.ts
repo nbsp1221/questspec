@@ -290,6 +290,51 @@ chapters:`,
     );
   });
 
+  it('enforces FTB Quests integer ranges for settings', () => {
+    const accepted = loadQuestSpec(
+      validSource.replace('groups:', 'settings:\n  detectionDelay: 0\ngroups:'),
+      'questbook.yaml',
+    );
+    const excessiveDelay = loadQuestSpec(
+      validSource.replace('groups:', 'settings:\n  detectionDelay: 201\ngroups:'),
+      'questbook.yaml',
+    );
+    const excessiveCooldown = loadQuestSpec(
+      validSource.replace('groups:', 'settings:\n  emergencyItemsCooldown: 2147483648\ngroups:'),
+      'questbook.yaml',
+    );
+
+    expect(accepted.diagnostics).toEqual([]);
+    expect(excessiveDelay.value).toBeUndefined();
+    expect(excessiveCooldown.value).toBeUndefined();
+  });
+
+  it('rejects loot-crate drop counts outside the FTB signed-int range', () => {
+    const source = validSource.replace(
+      'chapters:',
+      `rewardTables:
+  - key: crates
+    entries:
+      - key: experience
+        type: xp
+        xp: 1
+    lootCrate:
+      stringId: crates
+      drops:
+        boss: 2147483648
+chapters:`,
+    );
+    const result = loadQuestSpec(source, 'questbook.yaml');
+
+    expect(result.value).toBeUndefined();
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'SPEC_SCHEMA',
+        path: ['rewardTables', 0, 'lootCrate', 'drops', 'boss'],
+      }),
+    );
+  });
+
   it('normalizes local identities and defaults into semantic IR', () => {
     const result = loadQuestbook(validSource, 'questbook.yaml');
 

@@ -34,6 +34,20 @@ describe('physical FTB IDs', () => {
     );
   });
 
+  it('rejects physical IDs reserved by FTB Quests', () => {
+    for (const id of ['0000000000000000', '0000000000000001']) {
+      expect(() =>
+        allocatePhysicalIds([{ key: 'industry', kind: 'group' }], {
+          'group:industry': id,
+        }),
+      ).toThrowError(
+        expect.objectContaining<Partial<PhysicalIdAllocationError>>({
+          code: 'ID_INVALID_PHYSICAL',
+        }),
+      );
+    }
+  });
+
   it('rejects imported physical ID collisions', () => {
     expect(() =>
       allocatePhysicalIds(

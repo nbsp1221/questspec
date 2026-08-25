@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -124,7 +124,7 @@ describe('questspec CLI', () => {
         maxDepth: 0,
         reachable: [{ distance: 0, key: 'foundations.start' }],
       },
-      source: join(root, 'quests.yml'),
+      source: realpathSync(join(root, 'quests.yml')),
       valid: true,
     });
     expect(report.target).toMatchObject({ questSystem: 'ftbquests@2101.1.33' });
@@ -178,7 +178,10 @@ describe('questspec CLI', () => {
 
     expect(result.status).toBe(1);
     expect(JSON.parse(result.stdout)).toEqual([
-      expect.objectContaining({ code: 'RESOURCE_UNKNOWN_ITEM', file: join(root, 'quests.yml') }),
+      expect.objectContaining({
+        code: 'RESOURCE_UNKNOWN_ITEM',
+        file: realpathSync(join(root, 'quests.yml')),
+      }),
     ]);
   });
 

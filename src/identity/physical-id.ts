@@ -42,7 +42,9 @@ export function derivePhysicalId(kind: PhysicalObjectKind, key: string, salt = 0
 }
 
 export function isValidPhysicalId(value: string): boolean {
-  return physicalIdPattern.test(value) && value !== '0000000000000000';
+  return (
+    physicalIdPattern.test(value) && value !== '0000000000000000' && value !== '0000000000000001'
+  );
 }
 
 export function allocatePhysicalIds(
@@ -60,7 +62,7 @@ export function allocatePhysicalIds(
     if (!isValidPhysicalId(id)) {
       throw new PhysicalIdAllocationError(
         'ID_INVALID_PHYSICAL',
-        `Imported physical ID for ${key} is not a positive signed-long hex ID: ${id}`,
+        `Imported physical ID for ${key} is not an assignable positive signed-long hex ID: ${id}`,
       );
     }
     const owner = ownerById.get(id);

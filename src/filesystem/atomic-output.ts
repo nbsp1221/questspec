@@ -101,11 +101,18 @@ export async function writeFileSetAtomic(
 ): Promise<void> {
   const records = await Promise.all(
     [...files].map(async ([target, contents]) => {
-      const targetExists = await exists(target);
+      const targetStat = await statIfExists(target);
+      const targetExists = targetStat !== undefined;
       if (targetExists && !options.overwrite) {
         throw new AtomicOutputError(
           'OUTPUT_EXISTS',
           `Output destination already exists: ${target}`,
+        );
+      }
+      if (targetStat !== undefined && !targetStat.isFile()) {
+        throw new AtomicOutputError(
+          'OUTPUT_UNSAFE_PATH',
+          `File-set output destination is not a regular file: ${target}`,
         );
       }
       const parent = dirname(target);
@@ -133,11 +140,6 @@ export async function writeFileSetAtomic(
       await rename(record.staging, record.target);
       record.installed = true;
     }
-    await Promise.all(
-      records.map((record) =>
-        record.backup === undefined ? Promise.resolve() : rm(record.backup, { force: true }),
-      ),
-    );
   } catch (error) {
     for (const record of [...records].reverse()) {
       if (record.installed) {
@@ -145,17 +147,19 @@ export async function writeFileSetAtomic(
       }
       if (record.backup !== undefined && (await exists(record.backup))) {
         await rename(record.backup, record.target);
+        record.backup = undefined;
       }
     }
     throw error;
   } finally {
-    await Promise.all(
-      records.flatMap((record) => [
-        rm(record.staging, { force: true }),
-        record.backup === undefined ? Promise.resolve() : rm(record.backup, { force: true }),
-      ]),
-    );
+    await Promise.all(records.map((record) => rm(record.staging, { force: true })));
   }
+
+  await Promise.allSettled(
+    records.map((record) =>
+      record.backup === undefined ? Promise.resolve() : rm(record.backup, { force: true }),
+    ),
+  );
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -165,6 +169,17 @@ async function exists(path: string): Promise<boolean> {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return false;
+    }
+    throw error;
+  }
+}
+
+async function statIfExists(path: string): Promise<Awaited<ReturnType<typeof lstat>> | undefined> {
+  try {
+    return await lstat(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return undefined;
     }
     throw error;
   }
