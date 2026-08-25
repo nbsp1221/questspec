@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@statelyai/graph':
+        specifier: 2.3.0
+        version: 2.3.0(zod@4.4.3)
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
@@ -655,6 +658,47 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@statelyai/graph@2.3.0':
+    resolution: {integrity: sha512-huib7YkERizfqvY+3w4ISSSaz3fGd8wA2dyriWwBcJV1Gni09gPukTw5/NHvnsKt76o5cWP9j31l8hLQNXkfYQ==}
+    peerDependencies:
+      '@dagrejs/dagre': ^3.0.0 || ^4.0.0
+      '@hpcc-js/wasm-graphviz': ^1.0.0
+      cytoscape: ^3.0.0
+      d3-force: ^3.0.0
+      d3-hierarchy: ^3.0.0
+      dotparser: ^1.0.0
+      elkjs: ^0.9.0 || ^0.10.0 || ^0.11.0
+      fast-xml-parser: ^5.0.0
+      graphology: ^0.26.0
+      graphology-layout-forceatlas2: ^0.10.0
+      webcola: ^3.4.0
+      zod: ^4.0.0
+    peerDependenciesMeta:
+      '@dagrejs/dagre':
+        optional: true
+      '@hpcc-js/wasm-graphviz':
+        optional: true
+      cytoscape:
+        optional: true
+      d3-force:
+        optional: true
+      d3-hierarchy:
+        optional: true
+      dotparser:
+        optional: true
+      elkjs:
+        optional: true
+      fast-xml-parser:
+        optional: true
+      graphology:
+        optional: true
+      graphology-layout-forceatlas2:
+        optional: true
+      webcola:
+        optional: true
+      zod:
+        optional: true
 
   '@stylistic/eslint-plugin@5.10.0':
     resolution: {integrity: sha512-nPK52ZHvot8Ju/0A4ucSX1dcPV2/1clx0kLcH5wDmrE4naKso7TUC/voUyU1O9OTKTrR6MYip6LP0ogEMQ9jPQ==}
@@ -2254,6 +2298,10 @@ snapshots:
   '@rolldown/pluginutils@1.0.1': {}
 
   '@standard-schema/spec@1.1.0': {}
+
+  '@statelyai/graph@2.3.0(zod@4.4.3)':
+    optionalDependencies:
+      zod: 4.4.3
 
   '@stylistic/eslint-plugin@5.10.0(eslint@10.9.0)':
     dependencies:

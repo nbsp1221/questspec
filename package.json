@@ -53,6 +53,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@statelyai/graph": "2.3.0",
     "ajv": "^8.20.0",
     "cac": "^7.0.0",
     "yaml": "^2.9.0"
