@@ -1,6 +1,6 @@
 {
   "name": "questspec",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Questbooks as code for Minecraft, with declarative authoring, validation, and version-aware compilation",
   "keywords": [
     "cli",
