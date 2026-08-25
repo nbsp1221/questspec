@@ -394,6 +394,24 @@ function validateLocalization(questbook: Questbook, diagnostics: Diagnostic[]): 
 function validateFeatureContracts(questbook: Questbook, diagnostics: Diagnostic[]): void {
   const tableKeys = new Set(questbook.rewardTables.map(({ key }) => key));
   checkItemStack(questbook.settings.icon, ['settings', 'icon'], diagnostics);
+  if (questbook.settings.detectionDelay !== undefined) {
+    checkRange(
+      questbook.settings.detectionDelay,
+      0,
+      200,
+      ['settings', 'detectionDelay'],
+      diagnostics,
+    );
+  }
+  if (questbook.settings.emergencyItemsCooldown !== undefined) {
+    checkRange(
+      questbook.settings.emergencyItemsCooldown,
+      0,
+      2_147_483_647,
+      ['settings', 'emergencyItemsCooldown'],
+      diagnostics,
+    );
+  }
   questbook.chapters.forEach((chapter, chapterIndex) => {
     const chapterPath = ['chapters', chapterIndex] as Array<number | string>;
     checkFilename(chapter.filename, [...chapterPath, 'filename'], diagnostics);
@@ -446,6 +464,11 @@ function validateFeatureContracts(questbook: Questbook, diagnostics: Diagnostic[
     }
     checkNumberRange(table.emptyWeight, 0, Number.MAX_VALUE, [...path, 'emptyWeight'], diagnostics);
     checkRange(table.lootSize, 1, 2_147_483_647, [...path, 'lootSize'], diagnostics);
+    if (table.lootCrate !== undefined) {
+      for (const [kind, count] of Object.entries(table.lootCrate.drops)) {
+        checkRange(count, 0, 2_147_483_647, [...path, 'lootCrate', 'drops', kind], diagnostics);
+      }
+    }
     table.entries.forEach(({ reward, weight }, entryIndex) => {
       checkNumberRange(
         weight,

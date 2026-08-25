@@ -99,4 +99,55 @@ describe('validateQuestbook', () => {
       ]),
     );
   });
+
+  it('rejects values outside FTB Quests integer field ranges', () => {
+    const questbook = createQuestbookFixture();
+    questbook.settings.detectionDelay = 201;
+    questbook.settings.emergencyItemsCooldown = 2_147_483_648;
+    questbook.rewardTables.push({
+      emptyWeight: 0,
+      entries: [
+        {
+          reward: {
+            autoClaim: 'default',
+            disableRewardScreenBlur: false,
+            excludeFromClaimAll: false,
+            ignoreRewardBlocking: false,
+            key: 'loot.experience',
+            levels: 1,
+            localKey: 'experience',
+            tags: [],
+            teamReward: 'default',
+            title: {},
+            type: 'xp_levels',
+          },
+          weight: 1,
+        },
+      ],
+      filename: 'loot',
+      hideTooltip: false,
+      key: 'loot',
+      localKey: 'loot',
+      lootCrate: {
+        color: 0xffffff,
+        drops: { boss: 2_147_483_648, monster: 0, passive: 0 },
+        glow: false,
+        stringId: 'loot',
+      },
+      lootSize: 1,
+      tags: [],
+      title: {},
+      useTitle: false,
+    });
+
+    expect(
+      validateQuestbook(questbook)
+        .filter(({ code }) => code === 'VALUE_OUT_OF_RANGE')
+        .map(({ path }) => path),
+    ).toEqual([
+      ['settings', 'detectionDelay'],
+      ['settings', 'emergencyItemsCooldown'],
+      ['rewardTables', 0, 'lootCrate', 'drops', 'boss'],
+    ]);
+  });
 });
