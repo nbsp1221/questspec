@@ -27,6 +27,7 @@
   },
   "files": [
     "dist",
+    "schema",
     "LICENSE",
     "README.md"
   ],
@@ -36,6 +37,7 @@
   },
   "scripts": {
     "build": "tsdown",
+    "benchmark": "node scripts/benchmark-snbt.ts",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "dev": "tsdown --watch",
     "format": "oxfmt .",
@@ -45,12 +47,16 @@
     "prepack": "pnpm build",
     "prepublishOnly": "pnpm check",
     "questspec": "node src/index.ts",
+    "schema:generate": "node scripts/write-schema.ts && oxfmt schema/questspec-1.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "cac": "^7.0.0"
+    "@statelyai/graph": "2.3.0",
+    "ajv": "^8.20.0",
+    "cac": "^7.0.0",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@retn0/eslint-config": "^2.1.0",
