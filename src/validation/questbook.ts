@@ -1,5 +1,11 @@
 import type { Diagnostic } from '../diagnostics/diagnostic.ts';
 import type { ItemStack, Quest, Questbook, Reward } from '../ir/questbook.ts';
+import {
+  type QuestGraph,
+  type QuestGraphSummary,
+  buildQuestGraph,
+  summarizeQuestGraph,
+} from '../graph/index.ts';
 import { parseSnbt } from '../snbt/parser.ts';
 
 const filenamePattern = /^[a-z0-9][a-z0-9_-]*$/u;
@@ -10,14 +16,56 @@ interface QuestRecord {
   questIndex: number;
 }
 
+/**
+ * The graph state retained by validation for downstream analysis callers.
+ *
+ * A graph is available when every quest identity is unique. Missing dependency
+ * endpoints are represented by an available, partial graph so consumers can
+ * still inspect the valid structural portion. Duplicate identities are
+ * ambiguous and deliberately return no graph or summary.
+ */
+export type QuestbookGraphState =
+  | {
+      readonly graph: QuestGraph;
+      readonly kind: 'available';
+      readonly partial: boolean;
+      readonly summary: QuestGraphSummary;
+    }
+  | {
+      readonly graph: null;
+      readonly kind: 'ambiguous';
+      readonly partial: false;
+      readonly summary: null;
+    };
+
+/** The complete validation result for callers that need to reuse graph work. */
+export interface QuestbookValidationResult {
+  readonly diagnostics: Diagnostic[];
+  readonly graphState: QuestbookGraphState;
+}
+
 export function validateQuestbook(questbook: Questbook): Diagnostic[] {
+  return validateQuestbookWithGraph(questbook).diagnostics;
+}
+
+/**
+ * Validate a Questbook and retain the one graph and summary computed during
+ * validation. This is the reuse boundary for loaders and analysis callers;
+ * the legacy `validateQuestbook` function above intentionally remains a
+ * diagnostics-only facade.
+ */
+export function validateQuestbookWithGraph(questbook: Questbook): QuestbookValidationResult {
   const diagnostics: Diagnostic[] = [];
   validateIdentities(questbook, diagnostics);
-  validateGraph(questbook, diagnostics);
+  const graphResult = buildQuestGraph(questbook);
+  const graphState = validateGraph(questbook, graphResult, diagnostics);
   validateLocalization(questbook, diagnostics);
   validateFeatureContracts(questbook, diagnostics);
-  return diagnostics;
+  return { diagnostics, graphState };
 }
+
+/** Backward-compatible alias for callers that prefer an explicit state name. */
+export const validateQuestbookState = validateQuestbookWithGraph;
 
 function addDiagnostic(
   diagnostics: Diagnostic[],
@@ -47,115 +95,104 @@ function questRecords(questbook: Questbook): QuestRecord[] {
   );
 }
 
-function validateGraph(questbook: Questbook, diagnostics: Diagnostic[]): void {
+function validateGraph(
+  questbook: Questbook,
+  graphResult: ReturnType<typeof buildQuestGraph>,
+  diagnostics: Diagnostic[],
+): QuestbookGraphState {
   const records = questRecords(questbook);
-  const recordByKey = new Map(records.map((record) => [record.quest.key, record]));
-
-  for (const record of records) {
-    record.quest.dependencies.forEach((dependency, dependencyIndex) => {
-      if (!recordByKey.has(dependency)) {
-        addDiagnostic(
-          diagnostics,
-          'GRAPH_MISSING_DEPENDENCY',
-          `Quest ${record.quest.key} depends on missing quest ${dependency}`,
-          [
-            'chapters',
-            record.chapterIndex,
-            'quests',
-            record.questIndex,
-            'dependencies',
-            dependencyIndex,
-          ],
-        );
-      }
-    });
-
-    for (const dependency of Object.keys(record.quest.dependencyControlPoints)) {
-      if (!record.quest.dependencies.includes(dependency)) {
-        addDiagnostic(
-          diagnostics,
-          'GRAPH_CONTROL_POINT_WITHOUT_DEPENDENCY',
-          `Dependency control points refer to undeclared dependency ${dependency}`,
-          [
-            'chapters',
-            record.chapterIndex,
-            'quests',
-            record.questIndex,
-            'dependencyControlPoints',
-            dependency,
-          ],
-        );
-      }
-    }
+  diagnostics.push(...orderGraphDiagnostics(graphResult.diagnostics, records));
+  if (graphResult.graph === null) {
+    // A duplicate identity makes endpoint resolution ambiguous. Keep the
+    // legacy validator fail-closed: diagnostics are still returned, but no
+    // graph-derived cycle or depth findings are inferred from one duplicate.
+    return { graph: null, kind: 'ambiguous', partial: false, summary: null };
   }
 
-  const cycleKeys = findCycleKeys(records, recordByKey);
+  const analyzed = summarizeQuestGraph(graphResult.graph);
+  const cycleKeys = new Set(analyzed.summary.cycleComponents.flat());
+  // Diagnostics retain the historical quest-record order and source paths,
+  // while SCC membership itself comes from the shared normalized analysis.
   for (const record of records) {
-    if (cycleKeys.has(record.quest.key)) {
-      addDiagnostic(
-        diagnostics,
-        'GRAPH_CYCLE',
-        `Quest ${record.quest.key} participates in a dependency cycle`,
-        ['chapters', record.chapterIndex, 'quests', record.questIndex, 'dependencies'],
-      );
+    if (!cycleKeys.has(record.quest.key)) {
+      continue;
     }
+    addDiagnostic(
+      diagnostics,
+      'GRAPH_CYCLE',
+      `Quest ${record.quest.key} participates in a dependency cycle`,
+      ['chapters', record.chapterIndex, 'quests', record.questIndex, 'dependencies'],
+    );
   }
+  diagnostics.push(...analyzed.diagnostics);
+  return {
+    graph: graphResult.graph,
+    kind: 'available',
+    partial: graphResult.partial,
+    summary: analyzed.summary,
+  };
 }
 
-function findCycleKeys(records: QuestRecord[], recordByKey: Map<string, QuestRecord>): Set<string> {
-  const cycleKeys = new Set<string>();
-  const indices = new Map<string, number>();
-  const lowLinks = new Map<string, number>();
-  const onStack = new Set<string>();
-  const stack: string[] = [];
-  let nextIndex = 0;
-
-  const visit = (key: string): void => {
-    indices.set(key, nextIndex);
-    lowLinks.set(key, nextIndex);
-    nextIndex += 1;
-    stack.push(key);
-    onStack.add(key);
-
-    const record = recordByKey.get(key)!;
-    for (const dependency of record.quest.dependencies) {
-      if (!recordByKey.has(dependency)) {
-        continue;
-      }
-      if (!indices.has(dependency)) {
-        visit(dependency);
-        lowLinks.set(key, Math.min(lowLinks.get(key)!, lowLinks.get(dependency)!));
-      } else if (onStack.has(dependency)) {
-        lowLinks.set(key, Math.min(lowLinks.get(key)!, indices.get(dependency)!));
-      }
-    }
-
-    if (lowLinks.get(key) !== indices.get(key)) {
-      return;
-    }
-    const component: string[] = [];
-    let member: string;
-    do {
-      member = stack.pop()!;
-      onStack.delete(member);
-      component.push(member);
-    } while (member !== key);
-
-    const selfCycle =
-      component.length === 1 && recordByKey.get(component[0])!.quest.dependencies.includes(key);
-    if (component.length > 1 || selfCycle) {
-      for (const componentKey of component) {
-        cycleKeys.add(componentKey);
-      }
-    }
-  };
-
+/**
+ * The graph builder canonicalizes its own diagnostic collection. The legacy
+ * validator, however, reports graph findings in quest declaration order:
+ * dependencies first, followed by that quest's control points. Reorder the
+ * already-produced diagnostics by their source paths so validation preserves
+ * that contract without another graph traversal or a second finding pass.
+ */
+function orderGraphDiagnostics(
+  graphDiagnostics: readonly Diagnostic[],
+  records: readonly QuestRecord[],
+): Diagnostic[] {
+  const declarationOrder = new Map<string, number>();
+  let nextOrder = 0;
   for (const record of records) {
-    if (!indices.has(record.quest.key)) {
-      visit(record.quest.key);
+    for (
+      let dependencyIndex = 0;
+      dependencyIndex < record.quest.dependencies.length;
+      dependencyIndex += 1
+    ) {
+      declarationOrder.set(
+        pathKey([
+          'chapters',
+          record.chapterIndex,
+          'quests',
+          record.questIndex,
+          'dependencies',
+          dependencyIndex,
+        ]),
+        nextOrder,
+      );
+      nextOrder += 1;
+    }
+    for (const dependency of Object.keys(record.quest.dependencyControlPoints)) {
+      declarationOrder.set(
+        pathKey([
+          'chapters',
+          record.chapterIndex,
+          'quests',
+          record.questIndex,
+          'dependencyControlPoints',
+          dependency,
+        ]),
+        nextOrder,
+      );
+      nextOrder += 1;
     }
   }
-  return cycleKeys;
+
+  return graphDiagnostics
+    .map((diagnostic, originalIndex) => ({
+      diagnostic,
+      originalIndex,
+      order: declarationOrder.get(pathKey(diagnostic.path)) ?? Number.MAX_SAFE_INTEGER,
+    }))
+    .sort((left, right) => left.order - right.order || left.originalIndex - right.originalIndex)
+    .map(({ diagnostic }) => diagnostic);
+}
+
+function pathKey(path: readonly (number | string)[]): string {
+  return JSON.stringify(path);
 }
 
 function validateIdentities(questbook: Questbook, diagnostics: Diagnostic[]): void {
