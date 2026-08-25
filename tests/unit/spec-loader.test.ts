@@ -324,4 +324,26 @@ chapters:`,
     });
     expect(diagnostic?.span?.start.line).toBe(32);
   });
+
+  it('retains the validated graph and summary for analysis callers', () => {
+    const result = loadQuestbook(validSource, 'questbook.yaml');
+
+    expect(result.graphState.kind).toBe('available');
+    if (result.graphState.kind !== 'available') {
+      throw new Error('expected an available graph');
+    }
+    expect(result.graphState.partial).toBe(false);
+    expect(result.graphState.graph.nodes.map(({ key }) => key)).toEqual(['foundations.first_iron']);
+    expect(result.graphState.summary.nodeCount).toBe(1);
+    expect(result.graphState.summary.criticalPath).toEqual(['foundations.first_iron']);
+  });
+
+  it('marks syntax and schema failures as not-built instead of ambiguous', () => {
+    expect(loadQuestbook('questspec: 2\n', 'broken.yml').graphState).toEqual({
+      graph: null,
+      kind: 'not-built',
+      partial: false,
+      summary: null,
+    });
+  });
 });

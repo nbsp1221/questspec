@@ -2,9 +2,10 @@ import { Ajv, type ErrorObject } from 'ajv';
 import { LineCounter, parseDocument } from 'yaml';
 import type { Diagnostic } from '../diagnostics/diagnostic.ts';
 import type { Questbook } from '../ir/questbook.ts';
+import type { QuestbookGraphState } from '../validation/questbook.ts';
 import { normalizeQuestSpec } from '../ir/normalize.ts';
 import { parseSnbt } from '../snbt/parser.ts';
-import { validateQuestbook } from '../validation/questbook.ts';
+import { validateQuestbookWithGraph } from '../validation/questbook.ts';
 import type { ItemStackSource, QuestSpecSource } from './types.ts';
 import { questSpecSchema } from './schema.ts';
 import { YamlSourceMap } from './source-map.ts';
@@ -16,10 +17,28 @@ export interface LoadQuestSpecResult {
 }
 
 export interface LoadQuestbookResult {
+  graphState: LoadQuestbookGraphState;
   diagnostics: Diagnostic[];
   sourceMap: YamlSourceMap;
   value?: Questbook;
 }
+
+export interface NotBuiltQuestbookGraphState {
+  readonly graph: null;
+  readonly kind: 'not-built';
+  readonly partial: false;
+  readonly summary: null;
+}
+
+export type LoadQuestbookGraphState = QuestbookGraphState | NotBuiltQuestbookGraphState;
+
+/** The source did not normalize far enough to construct a quest graph. */
+export const notBuiltQuestbookGraphState: NotBuiltQuestbookGraphState = Object.freeze({
+  graph: null,
+  kind: 'not-built',
+  partial: false,
+  summary: null,
+});
 
 const ajv = new Ajv({ allErrors: true, strict: true });
 const validateQuestSpec = ajv.compile<QuestSpecSource>(questSpecSchema);
@@ -58,21 +77,33 @@ export function loadQuestSpec(source: string, file?: string): LoadQuestSpecResul
 export function loadQuestbook(source: string, file?: string): LoadQuestbookResult {
   const loaded = loadQuestSpec(source, file);
   if (loaded.value === undefined) {
-    return { diagnostics: loaded.diagnostics, sourceMap: loaded.sourceMap };
+    return {
+      diagnostics: loaded.diagnostics,
+      graphState: notBuiltQuestbookGraphState,
+      sourceMap: loaded.sourceMap,
+    };
   }
 
   const snbtDiagnostics = validateTypedSnbt(loaded.value, loaded.sourceMap, file);
   if (snbtDiagnostics.length > 0) {
-    return { diagnostics: snbtDiagnostics, sourceMap: loaded.sourceMap };
+    return {
+      diagnostics: snbtDiagnostics,
+      graphState: notBuiltQuestbookGraphState,
+      sourceMap: loaded.sourceMap,
+    };
   }
 
   const value = normalizeQuestSpec(loaded.value);
-  const diagnostics = validateQuestbook(value).map((diagnostic) => ({
+  // Validation constructs and summarizes the graph once. Keep that exact
+  // graph state on the loader result so analysis can query it without a
+  // second graph construction or summary pass.
+  const validated = validateQuestbookWithGraph(value);
+  const diagnostics = validated.diagnostics.map((diagnostic) => ({
     ...diagnostic,
     file,
     span: loaded.sourceMap.spanForPath(diagnostic.path),
   }));
-  return { diagnostics, sourceMap: loaded.sourceMap, value };
+  return { diagnostics, graphState: validated.graphState, sourceMap: loaded.sourceMap, value };
 }
 
 function validateTypedSnbt(

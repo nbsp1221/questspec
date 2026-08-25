@@ -102,6 +102,44 @@ describe('questspec CLI', () => {
     expect(result.stdout).toContain('ftbquests@2101.1.33');
   });
 
+  it('analyzes a source with a bounded structural JSON report', () => {
+    const root = mkdtempSync(join(tmpdir(), 'questspec-cli-'));
+    writeFileSync(join(root, 'quests.yml'), validQuestSpec);
+
+    const result = runCli(
+      ['analyze', 'quests.yml', '--from', 'foundations.start', '--max-depth', '0', '--json'],
+      root,
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    const report = JSON.parse(result.stdout) as unknown as Record<string, unknown>;
+    expect(report).toMatchObject({
+      direction: 'dependents',
+      graph: { edgeCount: 0, nodeCount: 1, maximumDepth: 0 },
+      partial: false,
+      query: {
+        direction: 'dependents',
+        from: 'foundations.start',
+        maxDepth: 0,
+        reachable: [{ distance: 0, key: 'foundations.start' }],
+      },
+      source: join(root, 'quests.yml'),
+      valid: true,
+    });
+    expect(report.target).toMatchObject({ questSystem: 'ftbquests@2101.1.33' });
+  });
+
+  it('rejects analyze option dependencies before loading the source', () => {
+    const root = mkdtempSync(join(tmpdir(), 'questspec-cli-'));
+    writeFileSync(join(root, 'quests.yml'), validQuestSpec);
+
+    const result = runCli(['analyze', 'quests.yml', '--to', 'foundations.start'], root);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('--to requires --from');
+  });
+
   it('emits machine-readable diagnostics for invalid source', () => {
     const root = mkdtempSync(join(tmpdir(), 'questspec-cli-'));
     writeFileSync(join(root, 'invalid.yml'), 'questspec: 2\n');

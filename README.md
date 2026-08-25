@@ -96,6 +96,7 @@ questspec validate <source> [--resources <catalog>] [--json]
 questspec compile <source> --output <directory> [--id-map <file>] [--resources <catalog>] [--force] [--json]
 questspec import <directory> --output <source> [--id-map <file>] [--force] [--json]
 questspec diff <source> <directory> [--id-map <file>] [--json]
+questspec analyze <source> [--from <quest>] [--to <quest>] [--direction <dependents|dependencies>] [--max-depth <integer>] [--json]
 ```
 
 `validate` checks YAML syntax, the public schema, identities, dependency cycles and references, localization, the exact target profile, and optionally resources.
@@ -105,6 +106,12 @@ questspec diff <source> <directory> [--id-map <file>] [--json]
 `import` supports the same MVP subset in reverse and writes both YAML and a physical-ID map as one transaction. Without a pre-existing ID map, imported logical keys are derived from stable physical IDs because FTB files do not retain the original authoring keys.
 
 `diff` compiles the source, imports both sides through the target adapter, and compares semantic content rather than whitespace or omitted runtime defaults.
+
+`analyze` reports the structural quest dependency graph. A dependency declaration is represented as a directed edge from prerequisite to dependent, so `--direction dependents` answers which quests can structurally follow a quest and `--direction dependencies` answers which quests structurally precede it. `--from` alone reports reflexive reachability with minimum edge distances; adding `--to` reports one deterministic shortest structural path. `--max-depth` is an inclusive edge bound for reachability.
+
+This is structural analysis, not a simulation of FTB Quests runtime unlocks or player progression. Reachability does not claim that a quest is startable or unlockable: dependency requirements, thresholds, optional state, branch exclusions, tasks, rewards, team state, and other runtime effects are outside this graph contract. Cycles and missing dependency endpoints still produce a report so the valid structural portion can be inspected, but the command exits with status 1.
+
+For machine-readable reachability, use `questspec analyze quests.yml --from foundations.first_log --max-depth 2 --json`; the JSON envelope contains the absolute source, target profile, validity, partial state, structural summary, direction, and the complete query result.
 
 Successful commands exit with status 0. Validation errors, semantic differences, unsupported data, and filesystem failures exit with status 1. Human diagnostics go to stderr; `--json` writes diagnostics or results to stdout.
 
