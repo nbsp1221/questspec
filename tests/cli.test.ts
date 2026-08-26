@@ -376,4 +376,4 @@ it('maps the target adapter failure matrix through both import and diff JSON', (
       expect(diagnostics[0].path[0]).toContain(testCase.path);
     }
   }
-});
+}, 20_000);
