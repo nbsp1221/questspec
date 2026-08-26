@@ -14,7 +14,7 @@ The current MVP is intentionally narrow and supports exactly this profile:
 
 `dataVersion: 13` is an FTB Quests persistence version, not a generic SNBT language version. Questspec does not claim compatibility with other version combinations that happen to use the same value.
 
-The package version remains `0.0.0` while this MVP is under development.
+The current package version is `0.1.0`. The narrow compatibility profile above remains intentional while the project is under development.
 
 ## Requirements
 
