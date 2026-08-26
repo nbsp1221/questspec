@@ -16,6 +16,35 @@ describe('artifact-aware resource validation', () => {
     expect(validateQuestbookResources(createQuestbookFixture(), catalog)).toEqual([]);
   });
 
+  it('validates quest icon items and component types', () => {
+    const questbook = createQuestbookFixture();
+    questbook.chapters[0].quests[0].icon = {
+      components: { 'minecraft:damage': '1' },
+      id: 'minecraft:diamond_sword',
+    };
+    const catalog = createResourceCatalog({
+      advancements: { 'minecraft:story/root': [''] },
+      componentTypes: [],
+      items: ['minecraft:iron_pickaxe', 'minecraft:oak_log'],
+      target: questbook.target,
+    });
+
+    expect(validateQuestbookResources(questbook, catalog)).toEqual([
+      expect.objectContaining({
+        code: 'RESOURCE_UNKNOWN_ITEM',
+        path: ['chapters', 0, 'quests', 0, 'icon'],
+      }),
+      expect.objectContaining({
+        code: 'RESOURCE_UNKNOWN_COMPONENT_TYPE',
+        path: ['chapters', 0, 'quests', 0, 'icon', 'components', 'minecraft:damage'],
+      }),
+    ]);
+
+    catalog.items.add('minecraft:diamond_sword');
+    catalog.componentTypes.add('minecraft:damage');
+    expect(validateQuestbookResources(questbook, catalog)).toEqual([]);
+  });
+
   it('reports unknown items, advancements, and explicit criteria', () => {
     const questbook = createQuestbookFixture();
     const advancementTask = questbook.chapters[0].quests[1].tasks[0];

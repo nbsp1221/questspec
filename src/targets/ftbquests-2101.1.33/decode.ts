@@ -11,7 +11,7 @@ import type {
   Task,
 } from '../../ir/questbook.ts';
 import type { SnbtCompound, SnbtTag } from '../../snbt/ast.ts';
-import type { ObservationType } from '../../spec/types.ts';
+import type { DependencyRequirement, ObservationType } from '../../spec/types.ts';
 import { allocatePhysicalIds, physicalIdKey } from '../../identity/physical-id.ts';
 import { parseSnbt, parseSnbtCompound } from '../../snbt/parser.ts';
 import { writeSnbt } from '../../snbt/writer.ts';
@@ -21,6 +21,7 @@ import { ftbQuests2101Profile } from './profile.ts';
 export type FtbQuestbookImportErrorCode =
   | 'IMPORT_INVALID_FIELD'
   | 'IMPORT_INVALID_QUESTBOOK'
+  | 'IMPORT_INVALID_SNBT'
   | 'IMPORT_MISSING_FILE'
   | 'IMPORT_UNSUPPORTED_FIELD'
   | 'IMPORT_UNSUPPORTED_TYPE';
@@ -122,7 +123,7 @@ export function decodeFtbQuests2101(
   const tableByPhysicalId = new Map<string, RewardTable>();
   const tablesWithOrder = tableFiles.map(([filePath, source]) =>
     decodeRewardTable(
-      parseSnbtCompound(source, { mode: 'ftb-compatible' }),
+      parseFtbCompound(source, filePath),
       filePath,
       locales,
       translations,
@@ -139,7 +140,7 @@ export function decodeFtbQuests2101(
   const questByPhysicalId = new Map<string, string>();
   const chaptersWithOrder = chapterFiles.map(([path, source]) =>
     decodeChapter(
-      parseSnbtCompound(source, { mode: 'ftb-compatible' }),
+      parseFtbCompound(source, path),
       path,
       locales,
       translations,
@@ -153,7 +154,7 @@ export function decodeFtbQuests2101(
   chaptersWithOrder.sort((left, right) => left.order - right.order);
   const chapters = chaptersWithOrder.map(({ chapter }) => chapter);
   resolveQuestReferences(chapters, questByPhysicalId);
-  assertTranslationsConsumed(translations, ids);
+  assertTranslationsConsumed(translations);
 
   const questbook: Questbook = {
     chapters,
@@ -237,6 +238,7 @@ function decodeChapter(
         tableByPhysicalId,
       ),
     ),
+    subtitle: localizedLines(locales, translations, 'chapter', physicalId, 'chapter_subtitle'),
     title: localizedText(locales, translations, 'chapter', physicalId, 'title'),
   };
   rejectNonEmptyCollection(compound, 'images', path);
@@ -389,9 +391,12 @@ function decodeQuest(
     [
       'dep_control_pts',
       'dependencies',
+      'dependency_requirement',
       'hide_dependency_lines',
       'hide_until_deps_visible',
+      'icon',
       'id',
+      'min_width',
       'optional',
       'rewards',
       'shape',
@@ -419,11 +424,21 @@ function decodeQuest(
   return {
     dependencies: dependencyPhysicalIds,
     dependencyControlPoints: controlPointPhysicalIds,
+    dependencyRequirement: decodeDependencyRequirement(compound, path),
     description: localizedLines(locales, translations, 'quest', physicalId, 'quest_desc'),
     hideDependencyLines: optionalBoolean(compound, 'hide_dependency_lines'),
     hideUntilDependenciesVisible: optionalBoolean(compound, 'hide_until_deps_visible'),
+    ...(optionalTag(compound, 'icon') === undefined
+      ? {}
+      : {
+          icon: decodeItemStack(
+            requiredCompoundTag(optionalTag(compound, 'icon')!, `${path}.icon`),
+            `${path}.icon`,
+          ),
+        }),
     key,
     localKey,
+    minWidth: decodeMinWidth(compound, path),
     optional: optionalBoolean(compound, 'optional') ?? false,
     rewards: optionalList(compound, 'rewards', path).value.map((tag, index) =>
       decodeReward(
@@ -439,6 +454,7 @@ function decodeQuest(
     ),
     shape: optionalString(compound, 'shape') ?? '',
     size: optionalNumber(compound, 'size') ?? 0,
+    subtitle: localizedText(locales, translations, 'quest', physicalId, 'quest_subtitle'),
     tasks: requiredList(compound, 'tasks', path).value.map((tag, index) =>
       decodeTask(
         requiredCompoundTag(tag, `${path}.tasks[${index}]`),
@@ -839,9 +855,12 @@ function decodeTranslations(files: ReadonlyMap<string, string>): Translations {
       continue;
     }
     const locale = match[1];
-    const compound = parseSnbtCompound(source, { mode: 'ftb-compatible' });
+    const compound = parseFtbCompound(source, path);
     const values = new Map<string, TranslationValue>();
     for (const entry of compound.entries) {
+      if (values.has(entry.key)) {
+        throw invalidField(`${path}.${entry.key}`, `Duplicate translation key: ${entry.key}`);
+      }
       if (entry.value.type === 'string') {
         values.set(entry.key, entry.value.value);
       } else if (
@@ -868,10 +887,19 @@ function localizedText(
   physicalId: string,
   field: string,
 ): Record<string, string> {
+  const key = `${kind}.${physicalId}.${field}`;
   return Object.fromEntries(
     locales.flatMap((locale) => {
-      const value = translations.get(locale)?.get(`${kind}.${physicalId}.${field}`);
-      return typeof value === 'string' ? [[locale, value]] : [];
+      const values = translations.get(locale);
+      if (values === undefined || !values.has(key)) {
+        return [];
+      }
+      const value = values.get(key);
+      if (typeof value !== 'string') {
+        throw invalidField(`lang/${locale}.snbt.${key}`, 'Translation must be a string');
+      }
+      values.delete(key);
+      return [[locale, value]];
     }),
   );
 }
@@ -883,35 +911,32 @@ function localizedLines(
   physicalId: string,
   field: string,
 ): Record<string, string[]> {
+  const key = `${kind}.${physicalId}.${field}`;
   return Object.fromEntries(
     locales.flatMap((locale) => {
-      const value = translations.get(locale)?.get(`${kind}.${physicalId}.${field}`);
-      return Array.isArray(value) ? [[locale, value]] : [];
+      const values = translations.get(locale);
+      if (values === undefined || !values.has(key)) {
+        return [];
+      }
+      const value = values.get(key);
+      if (!Array.isArray(value)) {
+        throw invalidField(`lang/${locale}.snbt.${key}`, 'Translation must be a string list');
+      }
+      values.delete(key);
+      return [[locale, value]];
     }),
   );
 }
 
-function assertTranslationsConsumed(translations: Translations, ids: PhysicalIdMap): void {
-  const expected = new Set<string>();
-  for (const [mapKey, physicalId] of Object.entries(ids)) {
-    const separator = mapKey.indexOf(':');
-    const kind = mapKey.slice(0, separator) as PhysicalObjectKind;
-    const translationKind =
-      kind === 'group' ? 'chapter_group' : kind === 'rewardTable' ? 'reward_table' : kind;
-    expected.add(`${translationKind}.${physicalId}.title`);
-    if (kind === 'quest') {
-      expected.add(`quest.${physicalId}.quest_desc`);
-    }
-  }
+function assertTranslationsConsumed(translations: Translations): void {
   for (const [locale, values] of translations) {
-    for (const key of values.keys()) {
-      if (!expected.has(key)) {
-        throw new FtbQuestbookImportError(
-          'IMPORT_UNSUPPORTED_FIELD',
-          `Translation key is not represented by the MVP semantic model: ${key}`,
-          `lang/${locale}.snbt.${key}`,
-        );
-      }
+    const key = values.keys().next().value;
+    if (key !== undefined) {
+      throw new FtbQuestbookImportError(
+        'IMPORT_UNSUPPORTED_FIELD',
+        `Translation key is not represented by the MVP semantic model: ${key}`,
+        `lang/${locale}.snbt.${key}`,
+      );
     }
   }
 }
@@ -973,6 +998,18 @@ function assertOnlyFields(compound: SnbtCompound, allowed: readonly string[], pa
   }
 }
 
+function parseFtbCompound(source: string, path: string): SnbtCompound {
+  try {
+    return parseSnbtCompound(source, { mode: 'ftb-compatible' });
+  } catch (error) {
+    throw new FtbQuestbookImportError(
+      'IMPORT_INVALID_SNBT',
+      `Invalid SNBT in ${path}: ${error instanceof Error ? error.message : String(error)}`,
+      path,
+    );
+  }
+}
+
 function parseRequired(files: ReadonlyMap<string, string>, path: string): SnbtCompound {
   const source = files.get(path);
   if (source === undefined) {
@@ -982,7 +1019,7 @@ function parseRequired(files: ReadonlyMap<string, string>, path: string): SnbtCo
       path,
     );
   }
-  return parseSnbtCompound(source, { mode: 'ftb-compatible' });
+  return parseFtbCompound(source, path);
 }
 
 function recordId(
@@ -1110,6 +1147,24 @@ function requiredTablePhysicalId(compound: SnbtCompound, key: string, path: stri
   return tag.value.toString(16).toUpperCase().padStart(16, '0');
 }
 
+function decodeMinWidth(compound: SnbtCompound, path: string): number {
+  const tag = optionalTag(compound, 'min_width');
+  if (tag === undefined) {
+    return 0;
+  }
+  const fieldPath = `${path}.min_width`;
+  if (tag.type !== 'int') {
+    throw invalidField(fieldPath, `Expected int, got ${tag.type}`);
+  }
+  if (tag.value < 0 || tag.value > 3000) {
+    throw invalidField(
+      fieldPath,
+      `Persisted min_width ${tag.value} is outside the QuestSpec target policy 0..3000`,
+    );
+  }
+  return tag.value;
+}
+
 function optionalNumber(compound: SnbtCompound, key: string): number | undefined {
   const tag = optionalTag(compound, key);
   return tag === undefined ? undefined : numericValue(tag, key);
@@ -1151,11 +1206,11 @@ function optionalStringList(compound: SnbtCompound, key: string, path: string): 
 
 function decodeItemStack(compound: SnbtCompound, path: string): ItemStack {
   assertOnlyFields(compound, ['components', 'count', 'id'], path);
-  const count = optionalNumber(compound, 'count');
-  if (count !== undefined && count !== 1) {
+  const count = optionalTag(compound, 'count');
+  if (count !== undefined && (count.type !== 'int' || count.value !== 1)) {
     throw new FtbQuestbookImportError(
       'IMPORT_UNSUPPORTED_FIELD',
-      'Nested item-stack counts other than 1 are outside the MVP semantic subset',
+      'Nested item-stack count must be the canonical int value 1',
       `${path}.count`,
     );
   }
@@ -1185,6 +1240,27 @@ function decodeObjectCommon(
       : { icon: decodeItemStack(requiredCompoundTag(icon, `${path}.icon`), `${path}.icon`) }),
     tags: optionalStringList(compound, 'tags', path),
   };
+}
+
+function decodeDependencyRequirement(compound: SnbtCompound, path: string): DependencyRequirement {
+  const tag = optionalTag(compound, 'dependency_requirement');
+  if (tag === undefined) {
+    return 'all_completed';
+  }
+  const fieldPath = `${path}.dependency_requirement`;
+  if (tag.type !== 'string') {
+    throw invalidField(fieldPath, `Expected string, got ${tag.type}`);
+  }
+  const requirement = tag.value;
+  if (
+    requirement !== 'all_completed' &&
+    requirement !== 'one_completed' &&
+    requirement !== 'all_started' &&
+    requirement !== 'one_started'
+  ) {
+    throw invalidField(fieldPath, `Unsupported dependency requirement ${requirement}`);
+  }
+  return requirement;
 }
 
 function decodeProgressionMode(

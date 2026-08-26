@@ -26,7 +26,10 @@ import {
 } from './identity/id-map.ts';
 import { type LoadQuestbookGraphState, loadQuestbook } from './spec/load.ts';
 import { serializeQuestbook } from './spec/serialize.ts';
-import { decodeFtbQuests2101 } from './targets/ftbquests-2101.1.33/decode.ts';
+import {
+  FtbQuestbookImportError,
+  decodeFtbQuests2101,
+} from './targets/ftbquests-2101.1.33/decode.ts';
 import {
   FtbQuestbookCompilationError,
   compileFtbQuests2101,
@@ -227,7 +230,10 @@ export function createCli(): CAC {
         );
       }
       const knownIds = await readPhysicalIdMap(idMapPath);
-      const imported = decodeFtbQuests2101(await readSnbtDirectory(resolve(directory)), knownIds);
+      const imported = decodeTarget(await readSnbtDirectory(resolve(directory)), knownIds, options);
+      if (imported === undefined) {
+        return;
+      }
       await writeFileSetAtomic(
         new Map([
           [output, serializeQuestbook(imported.questbook)],
@@ -269,12 +275,19 @@ export function createCli(): CAC {
         resolve(options.idMap ?? defaultPhysicalIdMapPath(sourcePath)),
       );
       const expectedCompiled = compileFtbQuests2101(loaded.questbook, ids);
-      const expected = decodeFtbQuests2101(expectedCompiled.files, expectedCompiled.ids).questbook;
-      const actual = decodeFtbQuests2101(
+      const expectedImport = decodeTarget(expectedCompiled.files, expectedCompiled.ids, options);
+      if (expectedImport === undefined) {
+        return;
+      }
+      const actualImport = decodeTarget(
         await readSnbtDirectory(resolve(directory)),
         expectedCompiled.ids,
-      ).questbook;
-      const differences = collectDifferences(expected, actual);
+        options,
+      );
+      if (actualImport === undefined) {
+        return;
+      }
+      const differences = collectDifferences(expectedImport.questbook, actualImport.questbook);
       if (differences.length === 0) {
         if (options.json) {
           console.log('[]');
@@ -596,6 +609,29 @@ async function resourceDiagnostics(
     file: sourcePath,
     span: loaded.sourceMap.spanForPath(diagnostic.path),
   }));
+}
+
+function decodeTarget(
+  files: Parameters<typeof decodeFtbQuests2101>[0],
+  knownIds: Parameters<typeof decodeFtbQuests2101>[1],
+  options: CommonOptions,
+): ReturnType<typeof decodeFtbQuests2101> | undefined {
+  try {
+    return decodeFtbQuests2101(files, knownIds);
+  } catch (error) {
+    if (!(error instanceof FtbQuestbookImportError)) {
+      throw error;
+    }
+    const diagnostic: Diagnostic = {
+      code: error.code,
+      ...(error.path === undefined ? {} : { file: error.path }),
+      message: error.message,
+      path: error.path === undefined ? [] : [error.path],
+      severity: 'error',
+    };
+    acceptDiagnostics([diagnostic], options);
+    return undefined;
+  }
 }
 
 function acceptDiagnostics(diagnostics: Diagnostic[], options: CommonOptions): boolean {

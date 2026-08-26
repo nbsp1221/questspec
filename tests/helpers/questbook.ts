@@ -15,15 +15,18 @@ const questbook: Questbook = {
         {
           dependencies: [],
           dependencyControlPoints: {},
+          dependencyRequirement: 'all_completed',
           description: { en_us: ['Start here.'], ko_kr: ['여기서 시작하세요.'] },
           hideDependencyLines: false,
           hideUntilDependenciesVisible: false,
           key: 'foundations.start',
           localKey: 'start',
+          minWidth: 0,
           optional: false,
           rewards: [],
           shape: '',
           size: 1,
+          subtitle: {},
           tasks: [
             {
               count: 1,
@@ -46,11 +49,13 @@ const questbook: Questbook = {
         {
           dependencies: ['foundations.start'],
           dependencyControlPoints: {},
+          dependencyRequirement: 'all_completed',
           description: {},
           hideDependencyLines: false,
           hideUntilDependenciesVisible: false,
           key: 'foundations.finish',
           localKey: 'finish',
+          minWidth: 0,
           optional: false,
           rewards: [
             {
@@ -69,6 +74,7 @@ const questbook: Questbook = {
           ],
           shape: '',
           size: 1,
+          subtitle: {},
           tasks: [
             {
               advancement: 'minecraft:story/root',
@@ -87,6 +93,7 @@ const questbook: Questbook = {
           y: 0,
         },
       ],
+      subtitle: {},
       title: { en_us: 'Foundations', ko_kr: '기초' },
     },
   ],

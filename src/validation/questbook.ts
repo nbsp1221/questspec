@@ -9,6 +9,12 @@ import {
 import { parseSnbt } from '../snbt/parser.ts';
 
 const filenamePattern = /^[a-z0-9][a-z0-9_-]*$/u;
+const dependencyRequirements = new Set([
+  'all_completed',
+  'one_completed',
+  'all_started',
+  'one_started',
+]);
 
 interface QuestRecord {
   chapterIndex: number;
@@ -341,9 +347,23 @@ function validateLocalization(questbook: Questbook, diagnostics: Diagnostic[]): 
       diagnostics,
       true,
     );
+    validateLocalizedValue(
+      chapter.subtitle,
+      ['chapters', chapterIndex, 'subtitle'],
+      questbook,
+      diagnostics,
+      Object.keys(chapter.subtitle).length > 0,
+    );
     chapter.quests.forEach((quest, questIndex) => {
       const questPath = ['chapters', chapterIndex, 'quests', questIndex] as Array<number | string>;
       validateLocalizedValue(quest.title, [...questPath, 'title'], questbook, diagnostics, true);
+      validateLocalizedValue(
+        quest.subtitle,
+        [...questPath, 'subtitle'],
+        questbook,
+        diagnostics,
+        Object.keys(quest.subtitle).length > 0,
+      );
       validateLocalizedValue(
         quest.description,
         [...questPath, 'description'],
@@ -417,8 +437,19 @@ function validateFeatureContracts(questbook: Questbook, diagnostics: Diagnostic[
     checkFilename(chapter.filename, [...chapterPath, 'filename'], diagnostics);
     checkItemStack(chapter.icon, [...chapterPath, 'icon'], diagnostics);
     chapter.quests.forEach((quest, questIndex) => {
+      const questPath = ['chapters', chapterIndex, 'quests', questIndex];
+      checkItemStack(quest.icon, [...questPath, 'icon'], diagnostics);
+      if (!dependencyRequirements.has(quest.dependencyRequirement)) {
+        addDiagnostic(
+          diagnostics,
+          'VALUE_INVALID',
+          `Unsupported dependency requirement: ${String(quest.dependencyRequirement)}`,
+          [...questPath, 'dependencyRequirement'],
+        );
+      }
+      checkRange(quest.minWidth, 0, 3000, [...questPath, 'minWidth'], diagnostics);
       quest.rewards.forEach((reward, rewardIndex) => {
-        const path = ['chapters', chapterIndex, 'quests', questIndex, 'rewards', rewardIndex];
+        const path = [...questPath, 'rewards', rewardIndex];
         if (
           (reward.type === 'choice' || reward.type === 'loot' || reward.type === 'random') &&
           !tableKeys.has(reward.table)

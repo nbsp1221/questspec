@@ -46,6 +46,9 @@ function chapterToSource(chapter: Questbook['chapters'][number]): ChapterSource 
     key: chapter.key,
     ...(chapter.progressionMode !== 'default' ? { progressionMode: chapter.progressionMode } : {}),
     quests: chapter.quests.map(questToSource),
+    ...(Object.keys(chapter.subtitle).length > 0
+      ? { subtitle: structuredClone(chapter.subtitle) }
+      : {}),
     title: chapter.title,
   };
 }
@@ -56,6 +59,9 @@ function questToSource(quest: Questbook['chapters'][number]['quests'][number]): 
     ...(Object.keys(quest.dependencyControlPoints).length > 0
       ? { dependencyControlPoints: structuredClone(quest.dependencyControlPoints) }
       : {}),
+    ...(quest.dependencyRequirement !== 'all_completed'
+      ? { dependencyRequirement: quest.dependencyRequirement }
+      : {}),
     ...(Object.keys(quest.description).length > 0
       ? { description: structuredClone(quest.description) }
       : {}),
@@ -65,11 +71,16 @@ function questToSource(quest: Questbook['chapters'][number]['quests'][number]): 
     ...(quest.hideUntilDependenciesVisible === undefined
       ? {}
       : { hideUntilDependenciesVisible: quest.hideUntilDependenciesVisible }),
+    ...(quest.icon === undefined ? {} : { icon: itemStackToSource(quest.icon) }),
     key: quest.localKey,
+    ...(quest.minWidth !== 0 ? { minWidth: quest.minWidth } : {}),
     ...(quest.optional ? { optional: true } : {}),
     ...(quest.rewards.length > 0 ? { rewards: quest.rewards.map(rewardToSource) } : {}),
     ...(quest.shape !== '' ? { shape: quest.shape } : {}),
     ...(quest.size !== 0 ? { size: quest.size } : {}),
+    ...(Object.keys(quest.subtitle).length > 0
+      ? { subtitle: structuredClone(quest.subtitle) }
+      : {}),
     tasks: quest.tasks.map(taskToSource),
     title: quest.title,
     x: quest.x,

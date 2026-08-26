@@ -165,7 +165,13 @@ The MVP supports:
 - XP, XP-level, item, random, loot, and choice rewards
 - reward tables with terminal item, XP, and XP-level entries
 - component-aware Minecraft 1.21 item stacks using explicit typed SNBT leaves
+- chapter line-list subtitles and quest scalar-text subtitles
+- count-free quest icons using the same component-aware item-stack model
+- all-completed, one-completed, all-started, and one-started dependency requirements
+- quest minimum width with a `0..3000` authoring policy and canonical zero omission
 - shared task and reward metadata, stable identities, localization, layout, and dependencies
+
+`minWidth` uses the exact editor-authoring range for this profile; it is not presented as an FTB persistence-format limit. `min_required_dependencies` remains unsupported and fails closed because its threshold semantics and save behavior require a separate contract.
 
 Component-bearing item stacks use an object instead of the string shorthand:
 

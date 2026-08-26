@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Questbook } from '../../src/ir/questbook.ts';
+import { queryReachability } from '../../src/graph/query.ts';
 import { buildQuestGraph } from '../../src/graph/quest-graph.ts';
+import { validateQuestbookWithGraph } from '../../src/validation/questbook.ts';
 import { createQuestbookFixture } from '../helpers/questbook.ts';
 
 function questbookFor(dependencies: Record<string, string[]>): Questbook {
@@ -88,6 +90,31 @@ describe('canonical Questbook graph construction', () => {
       ]),
     );
     expect(book).toEqual(before);
+  });
+
+  it('ignores dependency requirements when constructing the structural graph', () => {
+    const requirements = ['all_completed', 'one_completed', 'all_started', 'one_started'] as const;
+    const results = requirements.map((requirement) => {
+      const book = questbookFor({ A: [], B: ['A'] });
+      book.chapters[0].quests[1].dependencyRequirement = requirement;
+      const result = validateQuestbookWithGraph(book);
+      if (result.graphState.kind !== 'available') {
+        throw new Error('Expected an available graph');
+      }
+      return {
+        diagnostics: result.diagnostics,
+        edges: result.graphState.graph.edges.map(({ source, target }) => ({ source, target })),
+        nodes: result.graphState.graph.nodes.map(({ key }) => key),
+        partial: result.graphState.partial,
+        query: queryReachability(result.graphState.graph, {
+          direction: 'dependents',
+          from: ['A'],
+        }),
+        summary: result.graphState.summary,
+      };
+    });
+
+    expect(results.slice(1)).toEqual(results.slice(1).map(() => results[0]));
   });
 
   it('is stable under node, edge, and dependency declaration permutations', () => {

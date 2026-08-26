@@ -65,6 +65,28 @@
             "enum": ["default", "flexible", "linear"],
             "type": "string"
           },
+          "subtitle": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "minProperties": 1,
+            "patternProperties": {
+              "^[a-z]{2}_[a-z]{2}$": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "propertyNames": {
+              "pattern": "^[a-z]{2}_[a-z]{2}$",
+              "type": "string"
+            },
+            "type": "object"
+          },
           "quests": {
             "items": {
               "additionalProperties": false,
@@ -102,6 +124,10 @@
                   },
                   "type": "object"
                 },
+                "dependencyRequirement": {
+                  "enum": ["all_completed", "one_completed", "all_started", "one_started"],
+                  "type": "string"
+                },
                 "description": {
                   "additionalProperties": {
                     "items": {
@@ -130,9 +156,51 @@
                 "hideUntilDependenciesVisible": {
                   "type": "boolean"
                 },
+                "icon": {
+                  "oneOf": [
+                    {
+                      "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                      "type": "string"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "components": {
+                          "additionalProperties": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "snbt": {
+                                "minLength": 1,
+                                "type": "string"
+                              }
+                            },
+                            "required": ["snbt"],
+                            "type": "object"
+                          },
+                          "propertyNames": {
+                            "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                            "type": "string"
+                          },
+                          "type": "object"
+                        },
+                        "id": {
+                          "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+                          "type": "string"
+                        }
+                      },
+                      "required": ["id"],
+                      "type": "object"
+                    }
+                  ]
+                },
                 "key": {
                   "pattern": "^[a-z0-9][a-z0-9_.-]*$",
                   "type": "string"
+                },
+                "minWidth": {
+                  "maximum": 3000,
+                  "minimum": 0,
+                  "type": "integer"
                 },
                 "optional": {
                   "type": "boolean"
@@ -762,6 +830,22 @@
                 "size": {
                   "exclusiveMinimum": 0,
                   "type": "number"
+                },
+                "subtitle": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "minProperties": 1,
+                  "patternProperties": {
+                    "^[a-z]{2}_[a-z]{2}$": {
+                      "type": "string"
+                    }
+                  },
+                  "propertyNames": {
+                    "pattern": "^[a-z]{2}_[a-z]{2}$",
+                    "type": "string"
+                  },
+                  "type": "object"
                 },
                 "tasks": {
                   "items": {
