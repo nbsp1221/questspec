@@ -201,17 +201,27 @@ export interface RewardTableSource {
   useTitle?: boolean;
 }
 
+export type DependencyRequirement =
+  | 'all_completed'
+  | 'all_started'
+  | 'one_completed'
+  | 'one_started';
+
 export interface QuestSource {
   dependencies?: string[];
   dependencyControlPoints?: Record<string, PointSource[]>;
+  dependencyRequirement?: DependencyRequirement;
   description?: LocalizedLinesSource;
   hideDependencyLines?: boolean;
   hideUntilDependenciesVisible?: boolean;
+  icon?: ItemStackSource;
   key: string;
+  minWidth?: number;
   optional?: boolean;
   rewards?: RewardSource[];
   shape?: string;
   size?: number;
+  subtitle?: LocalizedTextSource;
   tasks: TaskSource[];
   title: LocalizedTextSource;
   x: number;
@@ -227,6 +237,7 @@ export interface ChapterSource {
   key: string;
   progressionMode?: 'default' | 'flexible' | 'linear';
   quests: QuestSource[];
+  subtitle?: LocalizedLinesSource;
   title: LocalizedTextSource;
 }
 

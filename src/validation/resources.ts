@@ -191,6 +191,9 @@ export function validateQuestbookResources(
   questbook.chapters.forEach((chapter, chapterIndex) => {
     checkItemStack(chapter.icon, ['chapters', chapterIndex, 'icon']);
     chapter.quests.forEach((quest, questIndex) => {
+      if (quest.icon !== undefined) {
+        checkItemStack(quest.icon, ['chapters', chapterIndex, 'quests', questIndex, 'icon']);
+      }
       quest.tasks.forEach((task, taskIndex) => {
         const path = ['chapters', chapterIndex, 'quests', questIndex, 'tasks', taskIndex];
         if (task.icon !== undefined) {

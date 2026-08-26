@@ -151,6 +151,7 @@ function validateTypedSnbt(
   source.chapters.forEach((chapter, chapterIndex) => {
     checkItemStack(chapter.icon, ['chapters', chapterIndex, 'icon']);
     chapter.quests.forEach((quest, questIndex) => {
+      checkItemStack(quest.icon, ['chapters', chapterIndex, 'quests', questIndex, 'icon']);
       quest.tasks.forEach((task, taskIndex) => {
         const path = ['chapters', chapterIndex, 'quests', questIndex, 'tasks', taskIndex];
         checkItemStack(task.icon, [...path, 'icon']);

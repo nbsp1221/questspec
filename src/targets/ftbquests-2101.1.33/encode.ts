@@ -276,8 +276,17 @@ function encodeQuest(quest: Quest, ids: PhysicalIdMap): SnbtCompound {
       entries.push(['dep_control_pts', encodeControlPoints(quest, ids)]);
     }
   }
+  if (quest.dependencyRequirement !== 'all_completed') {
+    entries.push(['dependency_requirement', snbtString(quest.dependencyRequirement)]);
+  }
   if (quest.hideUntilDependenciesVisible !== undefined) {
     entries.push(['hide_until_deps_visible', snbtBoolean(quest.hideUntilDependenciesVisible)]);
+  }
+  if (quest.icon !== undefined) {
+    entries.push(['icon', encodeItemStack(quest.icon)]);
+  }
+  if (quest.minWidth > 0) {
+    entries.push(['min_width', snbtInt(quest.minWidth)]);
   }
   if (quest.size !== 0) {
     entries.push(['size', snbtDouble(quest.size)]);
@@ -534,8 +543,10 @@ function encodeTranslations(
   }
   for (const chapter of questbook.chapters) {
     addText('chapter', chapter.key, 'title', chapter.title[locale]);
+    addText('chapter', chapter.key, 'chapter_subtitle', chapter.subtitle[locale]);
     for (const quest of chapter.quests) {
       addText('quest', quest.key, 'title', quest.title[locale]);
+      addText('quest', quest.key, 'quest_subtitle', quest.subtitle[locale]);
       addText('quest', quest.key, 'quest_desc', quest.description[locale]);
       for (const task of quest.tasks) {
         addText('task', task.key, 'title', task.title[locale]);

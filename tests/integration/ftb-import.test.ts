@@ -36,6 +36,152 @@ describe('FTB Quests 2101.1.33 import', () => {
     expect(compiled.files.get('chapters/01_foundations.snbt')).toContain('"minecraft:damage": 1');
   });
 
+  it('round-trips minWidth and rejects persisted values outside target policy', () => {
+    const questbook = createQuestbookFixture();
+    questbook.chapters[0].quests[0].minWidth = 250;
+    const compiled = compileFtbQuests2101(questbook);
+    const chapterPath = 'chapters/01_foundations.snbt';
+    const chapter = compiled.files.get(chapterPath)!;
+    expect(chapter).toContain('min_width: 250');
+    expect(
+      decodeFtbQuests2101(compiled.files, compiled.ids).questbook.chapters[0].quests[0].minWidth,
+    ).toBe(250);
+
+    const zeroCompiled = compileFtbQuests2101(createQuestbookFixture());
+    expect(zeroCompiled.files.get(chapterPath)).not.toContain('min_width');
+    expect(
+      decodeFtbQuests2101(zeroCompiled.files, zeroCompiled.ids).questbook.chapters[0].quests[0]
+        .minWidth,
+    ).toBe(0);
+
+    for (const value of ['-1', '3001', '250.0d']) {
+      const invalid = new Map(compiled.files);
+      invalid.set(chapterPath, chapter.replace('min_width: 250', `min_width: ${value}`));
+      let thrown: unknown;
+      try {
+        decodeFtbQuests2101(invalid, compiled.ids);
+      } catch (error) {
+        thrown = error;
+      }
+      expect(thrown).toMatchObject({ code: 'IMPORT_INVALID_FIELD' });
+      expect((thrown as FtbQuestbookImportError).path).toContain('min_width');
+    }
+
+    const upperBound = new Map(compiled.files);
+    upperBound.set(chapterPath, chapter.replace('min_width: 250', 'min_width: 3000'));
+    expect(
+      decodeFtbQuests2101(upperBound, compiled.ids).questbook.chapters[0].quests[0].minWidth,
+    ).toBe(3000);
+
+    const explicitZero = new Map(compiled.files);
+    explicitZero.set(chapterPath, chapter.replace('min_width: 250', 'min_width: 0'));
+    const zeroImported = decodeFtbQuests2101(explicitZero, compiled.ids);
+    expect(zeroImported.questbook.chapters[0].quests[0].minWidth).toBe(0);
+    expect(
+      compileFtbQuests2101(zeroImported.questbook, zeroImported.ids).files.get(chapterPath),
+    ).not.toContain('min_width');
+  });
+
+  it.each([
+    ['all_completed', false],
+    ['one_completed', true],
+    ['all_started', true],
+    ['one_started', true],
+  ] as const)(
+    'round-trips dependency requirement %s with canonical omission',
+    (requirement, emitted) => {
+      const questbook = createQuestbookFixture();
+      questbook.chapters[0].quests[1].dependencyRequirement = requirement;
+      const compiled = compileFtbQuests2101(questbook);
+      const chapterPath = 'chapters/01_foundations.snbt';
+      const chapter = compiled.files.get(chapterPath)!;
+      expect(chapter.includes(`dependency_requirement: "${requirement}"`)).toBe(emitted);
+      expect(
+        decodeFtbQuests2101(compiled.files, compiled.ids).questbook.chapters[0].quests[1]
+          .dependencyRequirement,
+      ).toBe(requirement);
+    },
+  );
+
+  it('rejects invalid and threshold dependency fields without masking the supported enum', () => {
+    const questbook = createQuestbookFixture();
+    questbook.chapters[0].quests[1].dependencyRequirement = 'all_started';
+    const compiled = compileFtbQuests2101(questbook);
+    const chapterPath = 'chapters/01_foundations.snbt';
+    const chapter = compiled.files.get(chapterPath)!;
+
+    const invalidEnum = new Map(compiled.files);
+    invalidEnum.set(
+      chapterPath,
+      chapter.replace('dependency_requirement: "all_started"', 'dependency_requirement: "future"'),
+    );
+    expect(() => decodeFtbQuests2101(invalidEnum, compiled.ids)).toThrowError(
+      expect.objectContaining<Partial<FtbQuestbookImportError>>({ code: 'IMPORT_INVALID_FIELD' }),
+    );
+
+    const invalidType = new Map(compiled.files);
+    invalidType.set(
+      chapterPath,
+      chapter.replace('dependency_requirement: "all_started"', 'dependency_requirement: 1'),
+    );
+    expect(() => decodeFtbQuests2101(invalidType, compiled.ids)).toThrowError(
+      expect.objectContaining<Partial<FtbQuestbookImportError>>({
+        code: 'IMPORT_INVALID_FIELD',
+        path: `${chapterPath}.quests[1].dependency_requirement`,
+      }),
+    );
+
+    const threshold = new Map(compiled.files);
+    threshold.set(
+      chapterPath,
+      chapter.replace(
+        'dependency_requirement: "all_started"',
+        'dependency_requirement: "all_started"\n\t\t\tmin_required_dependencies: 1',
+      ),
+    );
+    let thresholdError: unknown;
+    try {
+      decodeFtbQuests2101(threshold, compiled.ids);
+    } catch (error) {
+      thresholdError = error;
+    }
+    expect(thresholdError).toMatchObject({ code: 'IMPORT_UNSUPPORTED_FIELD' });
+    expect((thresholdError as FtbQuestbookImportError).path).toContain('min_required_dependencies');
+  });
+
+  it('round-trips count-free quest icons and rejects quantity and legacy shapes', () => {
+    const questbook = createQuestbookFixture();
+    questbook.chapters[0].quests[0].icon = {
+      components: { 'minecraft:damage': '1' },
+      id: 'minecraft:diamond_sword',
+    };
+    const compiled = compileFtbQuests2101(questbook);
+    const imported = decodeFtbQuests2101(compiled.files, compiled.ids);
+    expect(imported.questbook.chapters[0].quests[0].icon).toEqual(
+      questbook.chapters[0].quests[0].icon,
+    );
+    const chapterPath = 'chapters/01_foundations.snbt';
+    const chapter = compiled.files.get(chapterPath)!;
+    expect(chapter).toContain('icon: {');
+    expect(chapter).toContain('"minecraft:damage": 1');
+
+    const withCount = new Map(compiled.files);
+    withCount.set(chapterPath, chapter.replace('icon: {', 'icon: { count: 1, '));
+    expect(
+      decodeFtbQuests2101(withCount, compiled.ids).questbook.chapters[0].quests[0].icon,
+    ).toEqual(questbook.chapters[0].quests[0].icon);
+
+    for (const field of ['count: 2', 'count: 1.0d', 'Count: 1b', 'tag: {}']) {
+      const invalid = new Map(compiled.files);
+      invalid.set(chapterPath, chapter.replace('icon: {', `icon: { ${field}, `));
+      expect(() => decodeFtbQuests2101(invalid, compiled.ids)).toThrowError(
+        expect.objectContaining<Partial<FtbQuestbookImportError>>({
+          code: 'IMPORT_UNSUPPORTED_FIELD',
+        }),
+      );
+    }
+  });
+
   it('round-trips the expanded portable task and terminal reward types', () => {
     const questbook = createQuestbookFixture();
     const commonTask = {
@@ -261,6 +407,35 @@ describe('FTB Quests 2101.1.33 import', () => {
     );
   });
 
+  it('preserves all new fields without allocating identities in a combined round-trip', () => {
+    const questbook = createQuestbookFixture();
+    questbook.chapters[0].subtitle = { en_us: ['Chapter subtitle'], ko_kr: ['챕터 부제'] };
+    const quest = questbook.chapters[0].quests[1];
+    quest.subtitle = { en_us: 'Quest subtitle', ko_kr: '퀘스트 부제' };
+    quest.icon = { components: { 'minecraft:damage': '1' }, id: 'minecraft:diamond_sword' };
+    quest.dependencyRequirement = 'all_started';
+    quest.minWidth = 250;
+
+    const baseline = compileFtbQuests2101(createQuestbookFixture());
+    const compiled = compileFtbQuests2101(questbook);
+    const imported = decodeFtbQuests2101(compiled.files, compiled.ids);
+    const recompiled = compileFtbQuests2101(imported.questbook, imported.ids);
+
+    expect(imported.questbook.chapters[0].subtitle).toEqual(questbook.chapters[0].subtitle);
+    expect(imported.questbook.chapters[0].quests[1]).toMatchObject({
+      dependencyRequirement: 'all_started',
+      icon: quest.icon,
+      minWidth: 250,
+      subtitle: quest.subtitle,
+    });
+    expect(imported.ids).toEqual(compiled.ids);
+    expect(recompiled.ids).toEqual(compiled.ids);
+    expect(recompiled.files).toEqual(compiled.files);
+    expect(compiled.ids).toEqual(baseline.ids);
+    expect(Object.keys(compiled.ids).sort()).toEqual(Object.keys(baseline.ids).sort());
+    expect(Object.keys(compiled.ids)).toHaveLength(Object.keys(baseline.ids).length);
+  });
+
   it('preserves semantic content and physical IDs through import and recompilation', () => {
     const original = compileFtbQuests2101(createQuestbookFixture());
     const imported = decodeFtbQuests2101(original.files);
@@ -335,6 +510,57 @@ describe('FTB Quests 2101.1.33 import', () => {
     expect(() => decodeFtbQuests2101(files)).toThrowError(
       expect.objectContaining<Partial<FtbQuestbookImportError>>({
         code: 'IMPORT_UNSUPPORTED_FIELD',
+      }),
+    );
+  });
+
+  it('round-trips chapter and quest subtitles and rejects wrong locale shapes', () => {
+    const questbook = createQuestbookFixture();
+    questbook.chapters[0].subtitle = { en_us: ['Chapter line'], ko_kr: ['챕터 줄'] };
+    questbook.chapters[0].quests[0].subtitle = { en_us: 'Quest subtitle', ko_kr: '퀘스트 부제' };
+    const compiled = compileFtbQuests2101(questbook);
+    const imported = decodeFtbQuests2101(compiled.files, compiled.ids);
+
+    expect(imported.questbook.chapters[0].subtitle).toEqual(questbook.chapters[0].subtitle);
+    expect(imported.questbook.chapters[0].quests[0].subtitle).toEqual(
+      questbook.chapters[0].quests[0].subtitle,
+    );
+    expect(compiled.files.get('lang/en_us.snbt')).toContain('chapter_subtitle: ["Chapter line"]');
+    expect(compiled.files.get('lang/en_us.snbt')).toContain('quest_subtitle: "Quest subtitle"');
+
+    const chapterId = compiled.ids['chapter:foundations'];
+    const wrongChapter = new Map(compiled.files);
+    wrongChapter.set(
+      'lang/en_us.snbt',
+      compiled.files
+        .get('lang/en_us.snbt')!
+        .replace(
+          `chapter.${chapterId}.chapter_subtitle: ["Chapter line"]`,
+          `chapter.${chapterId}.chapter_subtitle: "Wrong shape"`,
+        ),
+    );
+    expect(() => decodeFtbQuests2101(wrongChapter, compiled.ids)).toThrowError(
+      expect.objectContaining<Partial<FtbQuestbookImportError>>({
+        code: 'IMPORT_INVALID_FIELD',
+        path: `lang/en_us.snbt.chapter.${chapterId}.chapter_subtitle`,
+      }),
+    );
+
+    const questId = compiled.ids['quest:foundations.start'];
+    const mixedQuest = new Map(compiled.files);
+    mixedQuest.set(
+      'lang/ko_kr.snbt',
+      compiled.files
+        .get('lang/ko_kr.snbt')!
+        .replace(
+          `quest.${questId}.quest_subtitle: "퀘스트 부제"`,
+          `quest.${questId}.quest_subtitle: ["잘못된 형태"]`,
+        ),
+    );
+    expect(() => decodeFtbQuests2101(mixedQuest, compiled.ids)).toThrowError(
+      expect.objectContaining<Partial<FtbQuestbookImportError>>({
+        code: 'IMPORT_INVALID_FIELD',
+        path: `lang/ko_kr.snbt.quest.${questId}.quest_subtitle`,
       }),
     );
   });

@@ -92,6 +92,7 @@ export const questSpecSchema = {
           icon: itemStack,
           key: logicalKey,
           progressionMode: { enum: ['default', 'flexible', 'linear'], type: 'string' },
+          subtitle: localizedLines,
           quests: {
             items: {
               additionalProperties: false,
@@ -107,10 +108,16 @@ export const questSpecSchema = {
                   propertyNames: logicalKey,
                   type: 'object',
                 },
+                dependencyRequirement: {
+                  enum: ['all_completed', 'one_completed', 'all_started', 'one_started'],
+                  type: 'string',
+                },
                 description: localizedLines,
                 hideDependencyLines: { type: 'boolean' },
                 hideUntilDependenciesVisible: { type: 'boolean' },
+                icon: itemStack,
                 key: logicalKey,
+                minWidth: { maximum: 3000, minimum: 0, type: 'integer' },
                 optional: { type: 'boolean' },
                 rewards: {
                   items: {
@@ -164,6 +171,7 @@ export const questSpecSchema = {
                 },
                 shape: { type: 'string' },
                 size: { exclusiveMinimum: 0, type: 'number' },
+                subtitle: localizedText,
                 tasks: {
                   items: {
                     oneOf: [

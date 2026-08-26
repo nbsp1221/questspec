@@ -1,5 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -230,3 +237,143 @@ describe('questspec CLI', () => {
     expect(diff.stdout).toContain('No semantic differences');
   });
 });
+
+it('reports target adapter failures consistently for import and diff', () => {
+  const root = mkdtempSync(join(tmpdir(), 'questspec-cli-'));
+  writeFileSync(join(root, 'quests.yml'), validQuestSpec);
+  expect(runCli(['compile', 'quests.yml', '--output', 'generated'], root).status).toBe(0);
+
+  writeFileSync(join(root, 'generated/data.snbt'), '{');
+  const malformed = runCli(['import', 'generated', '--output', 'malformed.yml', '--json'], root);
+  expect(malformed.status).toBe(1);
+  expect(malformed.stderr).toBe('');
+  expect(JSON.parse(malformed.stdout)).toEqual([
+    expect.objectContaining({
+      code: 'IMPORT_INVALID_SNBT',
+      file: 'data.snbt',
+      path: ['data.snbt'],
+      severity: 'error',
+    }),
+  ]);
+  expect(existsSync(join(root, 'malformed.yml'))).toBe(false);
+
+  expect(runCli(['compile', 'quests.yml', '--output', 'generated', '--force'], root).status).toBe(
+    0,
+  );
+  const chapterPath = join(root, 'generated/chapters/01_foundations.snbt');
+  writeFileSync(
+    chapterPath,
+    readFileSync(chapterPath, 'utf8').replace(
+      'filename: "01_foundations"',
+      'filename: "01_foundations"\nfuture_field: true',
+    ),
+  );
+
+  const jsonDiff = runCli(['diff', 'quests.yml', 'generated', '--json'], root);
+  expect(jsonDiff.status).toBe(1);
+  expect(jsonDiff.stderr).toBe('');
+  expect(JSON.parse(jsonDiff.stdout)).toEqual([
+    expect.objectContaining({
+      code: 'IMPORT_UNSUPPORTED_FIELD',
+      file: 'chapters/01_foundations.snbt.future_field',
+      path: ['chapters/01_foundations.snbt.future_field'],
+    }),
+  ]);
+
+  const humanImport = runCli(['import', 'generated', '--output', 'unsupported.yml'], root);
+  expect(humanImport.status).toBe(1);
+  expect(humanImport.stdout).toBe('');
+  expect(humanImport.stderr).toContain(
+    'chapters/01_foundations.snbt.future_field: error IMPORT_UNSUPPORTED_FIELD',
+  );
+});
+
+it('maps the target adapter failure matrix through both import and diff JSON', () => {
+  const root = mkdtempSync(join(tmpdir(), 'questspec-cli-'));
+  writeFileSync(join(root, 'quests.yml'), validQuestSpec);
+  const chapterPath = join(root, 'generated/chapters/01_foundations.snbt');
+  const localePath = join(root, 'generated/lang/en_us.snbt');
+  const cases: Array<{
+    code: string;
+    mutate: () => void;
+    name: string;
+    path: string;
+  }> = [
+    {
+      code: 'IMPORT_MISSING_FILE',
+      mutate: () => unlinkSync(join(root, 'generated/data.snbt')),
+      name: 'missing-file',
+      path: 'data.snbt',
+    },
+    {
+      code: 'IMPORT_UNSUPPORTED_TYPE',
+      mutate: () =>
+        writeFileSync(
+          chapterPath,
+          readFileSync(chapterPath, 'utf8').replace('type: "item"', 'type: "fluid"'),
+        ),
+      name: 'unsupported-type',
+      path: '.type',
+    },
+    {
+      code: 'IMPORT_INVALID_FIELD',
+      mutate: () =>
+        writeFileSync(
+          chapterPath,
+          readFileSync(chapterPath, 'utf8').replace(
+            /(\n\t\tx: 0\.0d)/u,
+            '\n\t\tdependency_requirement: 1$1',
+          ),
+        ),
+      name: 'invalid-value',
+      path: '.dependency_requirement',
+    },
+    {
+      code: 'IMPORT_INVALID_FIELD',
+      mutate: () =>
+        writeFileSync(
+          localePath,
+          readFileSync(localePath, 'utf8').replace(
+            /(quest\.[^.]+\.title): "Start"/u,
+            '$1: ["Start"]',
+          ),
+        ),
+      name: 'wrong-shaped-translation',
+      path: '.title',
+    },
+    {
+      code: 'IMPORT_UNSUPPORTED_FIELD',
+      mutate: () =>
+        writeFileSync(
+          localePath,
+          readFileSync(localePath, 'utf8').replace(
+            '{',
+            '{\n\tquest.7000000000000001.title: "Orphan"',
+          ),
+        ),
+      name: 'orphan-translation',
+      path: 'quest.7000000000000001.title',
+    },
+  ];
+
+  for (const testCase of cases) {
+    expect(runCli(['compile', 'quests.yml', '--output', 'generated', '--force'], root).status).toBe(
+      0,
+    );
+    testCase.mutate();
+
+    for (const args of [
+      ['import', 'generated', '--output', `${testCase.name}.yml`, '--json'],
+      ['diff', 'quests.yml', 'generated', '--json'],
+    ]) {
+      const result = runCli(args, root);
+      expect(result.status, `${testCase.name}: ${args[0]}`).toBe(1);
+      expect(result.stderr, `${testCase.name}: ${args[0]}`).toBe('');
+      const diagnostics = JSON.parse(result.stdout) as Array<{ code: string; path: string[] }>;
+      expect(diagnostics).toHaveLength(1);
+      expect(diagnostics[0].code).toBe(testCase.code);
+      expect(diagnostics[0].path).toHaveLength(1);
+      expect(diagnostics[0].path[0]).toContain(testCase.path);
+    }
+  }
+}, 20_000);

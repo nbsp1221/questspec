@@ -1,4 +1,5 @@
 import type {
+  DependencyRequirement,
   LocalizedLinesSource,
   LocalizedTextSource,
   ObservationType,
@@ -167,13 +168,17 @@ export interface RewardTable extends QuestObjectIdentity {
 export interface Quest extends QuestObjectIdentity {
   dependencies: string[];
   dependencyControlPoints: Record<string, PointSource[]>;
+  dependencyRequirement: DependencyRequirement;
   description: LocalizedLinesSource;
   hideDependencyLines?: boolean;
   hideUntilDependenciesVisible?: boolean;
+  icon?: ItemStack;
+  minWidth: number;
   optional: boolean;
   rewards: Reward[];
   shape: string;
   size: number;
+  subtitle: LocalizedTextSource;
   tasks: Task[];
   title: LocalizedTextSource;
   x: number;
@@ -188,6 +193,7 @@ export interface Chapter extends QuestObjectIdentity {
   icon: ItemStack;
   progressionMode: 'default' | 'flexible' | 'linear';
   quests: Quest[];
+  subtitle: LocalizedLinesSource;
   title: LocalizedTextSource;
 }
 

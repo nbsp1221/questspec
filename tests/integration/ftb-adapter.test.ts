@@ -67,6 +67,17 @@ describe('FTB Quests 2101.1.33 adapter', () => {
     );
   });
 
+  it('fails before emission when minWidth violates the authoring policy', () => {
+    const questbook = createQuestbookFixture();
+    questbook.chapters[0].quests[0].minWidth = 3001;
+
+    expect(() => compileFtbQuests2101(questbook)).toThrowError(
+      expect.objectContaining<Partial<FtbQuestbookCompilationError>>({
+        code: 'TARGET_INVALID_QUESTBOOK',
+      }),
+    );
+  });
+
   it('fails before emission when semantic validation has errors', () => {
     const questbook = createQuestbookFixture();
     questbook.chapters[0].quests[1].dependencies = ['foundations.missing'];

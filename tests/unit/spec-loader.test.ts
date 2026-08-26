@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadQuestSpec, loadQuestbook } from '../../src/spec/load.ts';
+import { serializeQuestbook } from '../../src/spec/serialize.ts';
 
 const validSource = `
 questspec: 1
@@ -211,6 +212,100 @@ chapters:`,
     });
   });
 
+  it('enforces and canonicalizes the minWidth editor-authoring policy', () => {
+    for (const value of [0, 250, 3000]) {
+      const loaded = loadQuestbook(
+        validSource.replace('        title:', `        minWidth: ${value}\n        title:`),
+        'questbook.yaml',
+      );
+      expect(loaded.diagnostics).toEqual([]);
+      expect(loaded.value?.chapters[0].quests[0].minWidth).toBe(value);
+      expect(serializeQuestbook(loaded.value!).includes('minWidth:')).toBe(value !== 0);
+    }
+
+    for (const value of [-1, 3001, 1.5]) {
+      const invalid = loadQuestSpec(
+        validSource.replace('        title:', `        minWidth: ${value}\n        title:`),
+      );
+      expect(invalid.value).toBeUndefined();
+      expect(invalid.diagnostics).toContainEqual(
+        expect.objectContaining({ path: ['chapters', 0, 'quests', 0, 'minWidth'] }),
+      );
+    }
+    expect(loadQuestbook(validSource).value?.chapters[0].quests[0].minWidth).toBe(0);
+  });
+
+  it('normalizes and serializes exact dependency requirement values', () => {
+    const source = validSource.replace(
+      '        title:',
+      '        dependencyRequirement: one_started\n        title:',
+    );
+    const loaded = loadQuestbook(source, 'questbook.yaml');
+    expect(loaded.diagnostics).toEqual([]);
+    expect(loaded.value?.chapters[0].quests[0].dependencyRequirement).toBe('one_started');
+    expect(serializeQuestbook(loaded.value!)).toContain('dependencyRequirement: one_started');
+
+    const defaults = loadQuestbook(validSource, 'questbook.yaml');
+    expect(defaults.value?.chapters[0].quests[0].dependencyRequirement).toBe('all_completed');
+    expect(serializeQuestbook(defaults.value!)).not.toContain('dependencyRequirement');
+
+    const invalid = loadQuestSpec(
+      validSource.replace(
+        '        title:',
+        '        dependencyRequirement: future\n        title:',
+      ),
+    );
+    expect(invalid.value).toBeUndefined();
+    expect(invalid.diagnostics).toContainEqual(
+      expect.objectContaining({
+        path: ['chapters', 0, 'quests', 0, 'dependencyRequirement'],
+      }),
+    );
+  });
+
+  it('normalizes quest icons and reports invalid component SNBT at the quest path', () => {
+    const source = validSource.replace(
+      '        title:\n          en_us: First Iron',
+      `        icon:
+          id: minecraft:diamond_sword
+          components:
+            minecraft:damage:
+              snbt: '1'
+        title:
+          en_us: First Iron`,
+    );
+    const loaded = loadQuestbook(source, 'questbook.yaml');
+    expect(loaded.diagnostics).toEqual([]);
+    expect(loaded.value?.chapters[0].quests[0].icon).toEqual({
+      components: { 'minecraft:damage': '1' },
+      id: 'minecraft:diamond_sword',
+    });
+
+    const shorthand = loadQuestbook(
+      validSource.replace('        title:', '        icon: minecraft:diamond\n        title:'),
+      'questbook.yaml',
+    );
+    expect(shorthand.diagnostics).toEqual([]);
+    expect(shorthand.value?.chapters[0].quests[0].icon).toEqual({
+      components: {},
+      id: 'minecraft:diamond',
+    });
+
+    for (const expression of ['{broken', '1 trailing']) {
+      const invalid = loadQuestbook(
+        source.replace("snbt: '1'", `snbt: '${expression}'`),
+        'questbook.yaml',
+      );
+      expect(invalid.value).toBeUndefined();
+      expect(invalid.diagnostics).toContainEqual(
+        expect.objectContaining({
+          code: 'SPEC_INVALID_SNBT',
+          path: ['chapters', 0, 'quests', 0, 'icon', 'components', 'minecraft:damage', 'snbt'],
+        }),
+      );
+    }
+  });
+
   it('reports invalid typed SNBT at the exact component path', () => {
     const source = validSource.replace(
       '            item: minecraft:iron_ingot',
@@ -240,6 +335,45 @@ chapters:`,
           'snbt',
         ],
       }),
+    );
+  });
+
+  it('enforces chapter-list and quest-text subtitle shapes through serialization', () => {
+    const source = validSource
+      .replace(
+        '    icon: minecraft:iron_pickaxe',
+        `    icon: minecraft:iron_pickaxe
+    subtitle:
+      en_us: [Chapter subtitle]
+      ko_kr: [챕터 부제]`,
+      )
+      .replace(
+        '        description:',
+        `        subtitle:
+          en_us: Quest subtitle
+          ko_kr: 퀘스트 부제
+        description:`,
+      );
+    const loaded = loadQuestbook(source, 'questbook.yaml');
+
+    expect(loaded.diagnostics).toEqual([]);
+    expect(loaded.value?.chapters[0]).toMatchObject({
+      subtitle: { en_us: ['Chapter subtitle'], ko_kr: ['챕터 부제'] },
+      quests: [{ subtitle: { en_us: 'Quest subtitle', ko_kr: '퀘스트 부제' } }],
+    });
+    const reloaded = loadQuestbook(serializeQuestbook(loaded.value!), 'roundtrip.yaml');
+    expect(reloaded.diagnostics).toEqual([]);
+    expect(reloaded.value).toEqual(loaded.value);
+
+    const wrongChapter = loadQuestSpec(source.replace('[Chapter subtitle]', 'Wrong shape'));
+    expect(wrongChapter.value).toBeUndefined();
+    expect(wrongChapter.diagnostics).toContainEqual(
+      expect.objectContaining({ path: ['chapters', 0, 'subtitle', 'en_us'] }),
+    );
+    const wrongQuest = loadQuestSpec(source.replace('Quest subtitle', '[Wrong shape]'));
+    expect(wrongQuest.value).toBeUndefined();
+    expect(wrongQuest.diagnostics).toContainEqual(
+      expect.objectContaining({ path: ['chapters', 0, 'quests', 0, 'subtitle', 'en_us'] }),
     );
   });
 
