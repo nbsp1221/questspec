@@ -13,3 +13,4 @@ packages/*/playwright-report/
 coverage/
 *.tgz
 .gjc/
+artifacts/qualification/

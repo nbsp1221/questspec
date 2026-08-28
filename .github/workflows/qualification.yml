@@ -1,0 +1,44 @@
+name: Qualification
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
+
+permissions: {}
+
+concurrency:
+  group: qualification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview-performance:
+    name: Production Chromium performance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm --filter @questspec/preview exec playwright install chromium
+      - run: pnpm package
+      - run: pnpm qualification:preview-performance
+      - name: Upload performance report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: preview-performance-${{ github.run_id }}
+          path: artifacts/qualification/preview-performance.json
+          if-no-files-found: error
+          retention-days: 30

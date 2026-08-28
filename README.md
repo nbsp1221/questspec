@@ -234,6 +234,30 @@ pnpm package:reproducibility
 
 Committed tests are hermetic product contracts and run in CI. External modpack corpora, JARs, generated registries, and Minecraft servers are QA inputs kept outside the repository. A QA discovery is reduced to a minimal committed regression test whenever possible rather than copying third-party data into fixtures.
 
+## Qualification gates
+
+Run the deterministic Turbo architecture qualification with:
+
+```sh
+pnpm qualification:turbo-cache
+```
+
+It removes only repository-owned build/package outputs and the local `.turbo` directory, then runs pinned Turbo 2.10.12 twice with `build package --filter=questspec` and machine-readable summaries. The clean run must report three misses, the unchanged run must report three hits (including `questspec#package`), and the seven-task dry graph—including transit tasks—must retain identical hashes and must not consume an owned output. The non-recursive report is written to `artifacts/qualification/turbo-cache.json` with `schemaVersion: 1`, task sets, hashes, inputs, and cache statuses. CI runs this once in its dedicated architecture job rather than recursively from a Turbo task.
+
+The production-browser performance qualification is intentionally separate from ordinary tests:
+
+```sh
+pnpm package
+pnpm --filter @questspec/preview exec playwright install chromium
+pnpm qualification:preview-performance
+```
+
+It requires Linux `/proc`, uses a new headless Chromium process and context for each deterministic seeded 500/1,000/2,000-node fixture, fixes the viewport at 1440×900 and edges at twice the node count, and drives the packaged production UI through a fixed pan, zoom-in, zoom-out, search, and selection sequence. It records readiness, `PerformanceObserver` interaction long tasks, total DOM elements, and peak aggregate Chromium process-tree RSS delta (never JavaScript heap).
+
+The 500-node result is the acceptance gate: readiness must be at most 3,000 ms, every interaction long task at most 100 ms, DOM at most 25,000 elements, and browser-process RSS delta at most 250 MiB. The 1,000- and 2,000-node runs must execute successfully and are recorded as observational degradation data; they have no numeric pass/fail budget until a separate reviewed baseline promotes one. The `artifacts/qualification/preview-performance.json` report has `schemaVersion: 1` and stable top-level `acceptance`, `degradationPolicy`, `fixture`, `measurements`, `passed`, `failure`, and `runtime` fields. The isolated scheduled/manual Qualification workflow uploads this report even on failure.
+
+`pnpm package:smoke` additionally installs the tarball into a clean external consumer and uses real Chromium to verify the packaged valid → syntax-invalid/stale retained canvas → repaired/current live-edit lifecycle. Chromium must already be installed; the package and release verification workflows install the lockfile-pinned browser revision.
+
 ## License
 
 [MIT](LICENSE)

@@ -1,10 +1,38 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
-import { manifestFiles, readJson, stage } from './lib.mjs';
+import { manifestFiles, readJson, root as repositoryRoot, stage } from './lib.mjs';
 
-const source = `questspec: 1\ntarget:\n  minecraft: 1.21.1\n  loader: neoforge@21.1.248\n  questSystem: ftbquests@2101.1.33\n  serializer: ftblibrary@2101.1.35\n  dataVersion: 13\nlocales:\n  default: en_us\n  supported: [en_us]\ngroups:\n  - key: group\nchapters:\n  - key: chapter\n    group: group\n    filename: chapter\n    title: {en_us: Chapter}\n    icon: minecraft:book\n    quests: []\n`;
+const source = (questTitle) =>
+  `questspec: 1\ntarget:\n  minecraft: 1.21.1\n  loader: neoforge@21.1.248\n  questSystem: ftbquests@2101.1.33\n  serializer: ftblibrary@2101.1.35\n  dataVersion: 13\nlocales:\n  default: en_us\n  supported: [en_us]\ngroups:\n  - key: group\nchapters:\n  - key: chapter\n    group: group\n    filename: chapter\n    title: {en_us: Chapter}\n    icon: minecraft:book\n    quests:\n      - key: first\n        title: {en_us: ${questTitle}}\n        x: 0\n        y: 0\n        tasks:\n          - key: done\n            type: checkmark\n`;
+const initialSource = source('Initial Quest');
+const { chromium } = createRequire(resolve(repositoryRoot, 'apps/preview/package.json'))(
+  'playwright',
+);
+
+async function verifyLiveEditLifecycle(url, sourcePath) {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { height: 900, width: 1440 } });
+    await page.goto(url);
+    await page.getByText('Current and valid', { exact: true }).waitFor();
+    await page.getByRole('option', { name: 'Initial Quest' }).waitFor();
+
+    await writeFile(sourcePath, 'questspec: [\n');
+    await page.getByText('Stale — showing last normalized snapshot', { exact: true }).waitFor();
+    await page.getByText('Stale canvas:', { exact: true }).waitFor();
+    await page.getByRole('option', { name: 'Initial Quest' }).waitFor();
+
+    await writeFile(sourcePath, repairedSource);
+    await page.getByText('Current and valid', { exact: true }).waitFor();
+    await page.getByRole('option', { name: 'Repaired Quest' }).waitFor();
+  } finally {
+    await browser.close();
+  }
+}
+const repairedSource = source('Repaired Quest');
 const root = await mkdtemp(join(tmpdir(), 'questspec-external-smoke-'));
 const pack = join(root, 'pack');
 const consumer = join(root, 'consumer');
@@ -37,7 +65,7 @@ try {
     throw new Error('Installed --version failed');
   }
   const sourcePath = join(consumer, 'quests.yml');
-  await writeFile(sourcePath, source);
+  await writeFile(sourcePath, initialSource);
   const guard = join(consumer, 'block-outbound.cjs');
   await writeFile(
     guard,
@@ -96,6 +124,9 @@ try {
       const response = await fetch(`${url}${path}`);
       if (response.status !== 404)
         throw new Error(`Installed serve exposed guessed/orphan asset ${path}: ${response.status}`);
+    }
+    if (signal === 'SIGTERM') {
+      await verifyLiveEditLifecycle(url, sourcePath);
     }
     const exited = new Promise((accept, reject) => {
       child.once('exit', (code) =>

@@ -26,6 +26,29 @@ jobs:
         run: |
           test "${GITHUB_REF_NAME#v}" = "$(node -p "require('./apps/cli/package.json').version")"
       - run: pnpm check
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm --filter @questspec/preview exec playwright install chromium
+      - run: pnpm package:smoke
+      - run: pnpm package:reproducibility
+      - run: pnpm package:contract
+      - name: Create immutable verified tarball
+        run: |
+          mkdir release-artifact
+          npm pack ./dist/package --pack-destination release-artifact
+          tarball="release-artifact/questspec-${GITHUB_REF_NAME#v}.tgz"
+          test -f "$tarball"
+          (cd release-artifact && sha256sum "$(basename "$tarball")" > SHA256SUMS)
+      - uses: actions/upload-artifact@v6
+        with:
+          name: verified-package
+          path: |
+            release-artifact/questspec-*.tgz
+            release-artifact/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 1
 
   publish-npm:
     name: Publish to npm
@@ -36,21 +59,20 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm package
-      - run: pnpm package:contract
-      - run: npm install --global npm@latest
-      - run: npm publish
-        working-directory: dist/package
+      - uses: actions/download-artifact@v7
+        with:
+          name: verified-package
+          path: release-artifact
+      - name: Verify immutable artifact SHA-256
+        run: sha256sum --check SHA256SUMS
+        working-directory: release-artifact
+      - name: Publish exact verified tarball
+        run: npm publish "release-artifact/questspec-${GITHUB_REF_NAME#v}.tgz" --access public --provenance
 
   github-release:
     name: Create GitHub release

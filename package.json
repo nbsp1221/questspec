@@ -14,6 +14,8 @@
     "package:pack": "pnpm package && pnpm --dir dist/package pack --pack-destination ../..",
     "package:reproducibility": "pnpm --filter questspec package:reproducibility",
     "package:smoke": "pnpm --filter questspec package:smoke",
+    "qualification:turbo-cache": "node scripts/qualification/turbo-cache.mjs",
+    "qualification:preview-performance": "node scripts/qualification/preview-performance.mjs",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint": "turbo run lint",
