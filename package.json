@@ -1,79 +1,34 @@
 {
-  "name": "questspec",
-  "version": "0.1.0",
-  "description": "Questbooks as code for Minecraft, with declarative authoring, validation, and version-aware compilation",
-  "keywords": [
-    "cli",
-    "compiler",
-    "declarative",
-    "ftb-quests",
-    "minecraft",
-    "questbook",
-    "static-analysis",
-    "typescript"
-  ],
-  "homepage": "https://github.com/nbsp1221/questspec#readme",
-  "bugs": {
-    "url": "https://github.com/nbsp1221/questspec/issues"
-  },
-  "license": "MIT",
-  "author": "nbsp1221",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/nbsp1221/questspec.git"
-  },
-  "bin": {
-    "questspec": "dist/index.mjs"
-  },
-  "files": [
-    "dist",
-    "schema",
-    "LICENSE",
-    "README.md"
-  ],
+  "name": "questspec-workspace",
+  "private": true,
   "type": "module",
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
-    "build": "tsdown",
-    "benchmark": "node scripts/benchmark-snbt.ts",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
-    "dev": "tsdown --watch",
+    "boundaries": "pnpm boundaries:stable && pnpm boundaries:turbo",
+    "boundaries:stable": "node scripts/verify-workspace-graph.mjs && node scripts/verify-source-boundaries.mjs --self-test",
+    "boundaries:turbo": "turbo boundaries",
+    "build": "turbo run build",
+    "check": "pnpm format:check && pnpm boundaries:stable && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm boundaries:turbo && pnpm artifacts:check",
+    "artifacts:check": "node scripts/verify-built-artifacts.mjs",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "lint": "oxlint . && eslint .",
+    "lint": "turbo run lint",
     "lint:fix": "oxlint --fix . && eslint --fix .",
-    "prepack": "pnpm build",
-    "prepublishOnly": "pnpm check",
-    "questspec": "node src/index.ts",
-    "schema:generate": "node scripts/write-schema.ts && oxfmt schema/questspec-1.json",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@statelyai/graph": "2.3.0",
-    "ajv": "^8.20.0",
-    "cac": "^7.0.0",
-    "yaml": "^2.9.0"
+    "questspec": "pnpm --filter questspec questspec",
+    "schema:generate": "pnpm --filter @questspec/core schema:generate && oxfmt schema/questspec-1.json",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
-    "@retn0/eslint-config": "^2.1.0",
-    "@retn0/eslint-config-oxlint": "^0.1.2",
-    "@retn0/oxfmt-config": "^0.2.0",
-    "@retn0/oxlint-config": "^2.2.0",
-    "@types/node": "^24.13.3",
-    "eslint": "^10.8.0",
-    "oxfmt": "^0.59.0",
-    "oxlint": "1.73.0",
-    "oxlint-tsgolint": "0.25.0",
-    "tsdown": "^0.22.14",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.10"
-  },
-  "engines": {
-    "node": "^24.0.0 || >=26.0.0"
+    "@retn0/eslint-config": "catalog:",
+    "@retn0/eslint-config-oxlint": "catalog:",
+    "@retn0/oxfmt-config": "catalog:",
+    "@retn0/oxlint-config": "catalog:",
+    "eslint": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:"
   },
   "packageManager": "pnpm@11.23.0"
 }

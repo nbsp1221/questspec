@@ -1,0 +1,25 @@
+{
+  "name": "@questspec/core",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "benchmark": "node scripts/benchmark-snbt.ts",
+    "lint": "oxlint . && eslint .",
+    "schema:generate": "node scripts/write-schema.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@statelyai/graph": "catalog:",
+    "ajv": "catalog:",
+    "yaml": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

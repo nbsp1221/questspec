@@ -1,5 +1,14 @@
 node_modules/
+.turbo/
 dist/
+apps/*/dist/
+apps/*/coverage/
+apps/*/test-results/
+apps/*/playwright-report/
+packages/*/dist/
+packages/*/coverage/
+packages/*/test-results/
+packages/*/playwright-report/
 coverage/
 *.tgz
 .gjc/

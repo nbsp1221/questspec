@@ -1,41 +1,40 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
-import { type CAC, cac } from 'cac';
-import pkg from '../package.json' with { type: 'json' };
-import type { Diagnostic } from './diagnostics/diagnostic.ts';
-import type { Questbook } from './ir/questbook.ts';
-import type { YamlSourceMap } from './spec/source-map.ts';
-import { reportDiagnostics } from './diagnostics/reporter.ts';
-import { writeDirectoryAtomic, writeFileSetAtomic } from './filesystem/atomic-output.ts';
-import { readSnbtDirectory } from './filesystem/read-directory.ts';
-import {
-  QUEST_GRAPH_QUERY_INVALID_DEPTH,
-  QUEST_GRAPH_QUERY_INVALID_DIRECTION,
-  type QuestGraphDirection,
-  type QuestGraphSummary,
-  type QuestReachability,
-  compareQuestKeys,
-  queryReachability,
-  queryShortestPath,
-} from './graph/index.ts';
-import {
-  defaultPhysicalIdMapPath,
-  readPhysicalIdMap,
-  serializePhysicalIdMap,
-} from './identity/id-map.ts';
-import { type LoadQuestbookGraphState, loadQuestbook } from './spec/load.ts';
-import { serializeQuestbook } from './spec/serialize.ts';
-import {
-  FtbQuestbookImportError,
-  decodeFtbQuests2101,
-} from './targets/ftbquests-2101.1.33/decode.ts';
+import type {
+  Diagnostic,
+  LoadQuestbookGraphState,
+  QuestGraphDirection,
+  QuestGraphSummary,
+  QuestReachability,
+  Questbook,
+  YamlSourceMap,
+} from '@questspec/core';
 import {
   FtbQuestbookCompilationError,
+  FtbQuestbookImportError,
+  QUEST_GRAPH_QUERY_INVALID_DEPTH,
+  QUEST_GRAPH_QUERY_INVALID_DIRECTION,
+  compareQuestKeys,
   compileFtbQuests2101,
-} from './targets/ftbquests-2101.1.33/encode.ts';
-import { ftbQuests2101Profile } from './targets/ftbquests-2101.1.33/profile.ts';
-import { parseResourceCatalog, validateQuestbookResources } from './validation/resources.ts';
+  decodeFtbQuests2101,
+  defaultPhysicalIdMapPath,
+  ftbQuests2101Profile,
+  loadQuestbook,
+  parseResourceCatalog,
+  queryReachability,
+  queryShortestPath,
+  readPhysicalIdMap,
+  readSnbtDirectory,
+  reportDiagnostics,
+  serializePhysicalIdMap,
+  serializeQuestbook,
+  validateQuestbookResources,
+  writeDirectoryAtomic,
+  writeFileSetAtomic,
+} from '@questspec/core';
+import { type CAC, cac } from 'cac';
+import pkg from '../package.json' with { type: 'json' };
 
 interface CommonOptions {
   json?: boolean;

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "globalDependencies": ["tsconfig.base.json", "eslint.config.js"],
+  "tasks": {
+    "transit": { "dependsOn": ["^transit"] },
+    "build": {
+      "dependsOn": ["transit"],
+      "outputs": ["dist/**"]
+    },
+    "typecheck": { "dependsOn": ["transit"] },
+    "test": {
+      "dependsOn": ["transit"],
+      "outputs": ["coverage/**", "test-results/**", "playwright-report/**"]
+    },
+    "lint": {},
+    "dev": { "cache": false, "persistent": true }
+  }
+}

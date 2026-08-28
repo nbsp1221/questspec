@@ -1,0 +1,65 @@
+{
+  "name": "questspec",
+  "version": "0.1.0",
+  "description": "Questbooks as code for Minecraft, with declarative authoring, validation, and version-aware compilation",
+  "keywords": [
+    "cli",
+    "compiler",
+    "declarative",
+    "ftb-quests",
+    "minecraft",
+    "questbook",
+    "static-analysis",
+    "typescript"
+  ],
+  "homepage": "https://github.com/nbsp1221/questspec#readme",
+  "bugs": {
+    "url": "https://github.com/nbsp1221/questspec/issues"
+  },
+  "license": "MIT",
+  "author": "nbsp1221",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nbsp1221/questspec.git"
+  },
+  "bin": {
+    "questspec": "dist/index.mjs"
+  },
+  "files": [
+    "dist",
+    "schema",
+    "LICENSE",
+    "README.md"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "lint": "oxlint . && eslint .",
+    "questspec": "node src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@questspec/core": "workspace:*",
+    "@questspec/preview-contract": "workspace:*",
+    "@statelyai/graph": "catalog:",
+    "ajv": "catalog:",
+    "cac": "catalog:",
+    "chokidar": "catalog:",
+    "open": "catalog:",
+    "yaml": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": "^24.0.0 || >=26.0.0"
+  }
+}
