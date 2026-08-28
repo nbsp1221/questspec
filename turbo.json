@@ -13,6 +13,21 @@
       "outputs": ["coverage/**", "test-results/**", "playwright-report/**"]
     },
     "lint": {},
+    "package": {
+      "dependsOn": ["build", "@questspec/preview#build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/scripts/package/**",
+        "$TURBO_ROOT$/apps/cli/package.json",
+        "$TURBO_ROOT$/pnpm-workspace.yaml",
+        "$TURBO_ROOT$/pnpm-lock.yaml",
+        "$TURBO_ROOT$/README.md",
+        "$TURBO_ROOT$/LICENSE",
+        "$TURBO_ROOT$/THIRD_PARTY_NOTICES.md",
+        "$TURBO_ROOT$/schema/**"
+      ],
+      "outputs": ["$TURBO_ROOT$/dist/package/**"]
+    },
     "dev": { "cache": false, "persistent": true }
   }
 }

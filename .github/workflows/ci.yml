@@ -38,3 +38,47 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+
+  package:
+    name: Packed external consumer
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm package
+      - run: pnpm package:contract
+      - run: pnpm package:smoke
+      - run: pnpm package:reproducibility
+
+  browser:
+    name: Playwright Chromium
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm --filter @questspec/preview exec playwright install chromium
+      - run: pnpm --filter @questspec/preview exec playwright --version
+      - run: pnpm --filter @questspec/preview test:browser
+      - run: pnpm --filter @questspec/preview test:e2e

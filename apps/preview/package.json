@@ -6,7 +6,7 @@
     "build": "vite build",
     "dev": "vite",
     "lint": "oxlint . && eslint .",
-    "test": "pnpm test:unit && pnpm test:browser && pnpm test:e2e",
+    "test": "pnpm test:unit",
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "test:e2e": "playwright test",
     "test:unit": "vitest run --config vitest.config.ts",

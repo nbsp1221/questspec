@@ -18,8 +18,10 @@ The current package version is `0.1.0`. The narrow compatibility profile above r
 
 ## Requirements
 
-- Node.js 24.x or 26.x and newer
-- pnpm 11.23.0 for repository development
+- Node.js 24.x or 26.x and newer to run the installed CLI
+- pnpm 11.23.0 only for repository development, builds, and package verification
+
+The published package includes its prebuilt browser application. Running `questspec` does not require pnpm, Vite, TypeScript, Turbo, a repository checkout, or a network connection.
 
 ## Quick start
 
@@ -80,11 +82,12 @@ rewardTables:
         weight: 5
 ```
 
-Validate and compile it:
+Validate, compile, or preview it:
 
 ```sh
 questspec validate quests.yml
 questspec compile quests.yml --output generated-quests
+questspec serve quests.yml --open
 ```
 
 Compilation writes a complete staging directory and renames it into place only after every file is ready. An existing destination is rejected unless `--force` is explicit.
@@ -97,6 +100,7 @@ questspec compile <source> --output <directory> [--id-map <file>] [--resources <
 questspec import <directory> --output <source> [--id-map <file>] [--force] [--json]
 questspec diff <source> <directory> [--id-map <file>] [--json]
 questspec analyze <source> [--from <quest>] [--to <quest>] [--direction <dependents|dependencies>] [--max-depth <integer>] [--json]
+questspec serve <source> [--port <integer>] [--open] [--resources <catalog>]
 ```
 
 `validate` checks YAML syntax, the public schema, identities, dependency cycles and references, localization, the exact target profile, and optionally resources.
@@ -112,6 +116,24 @@ questspec analyze <source> [--from <quest>] [--to <quest>] [--direction <depende
 This is structural analysis, not a simulation of FTB Quests runtime unlocks or player progression. Reachability does not claim that a quest is startable or unlockable: dependency requirements, thresholds, optional state, branch exclusions, tasks, rewards, team state, and other runtime effects are outside this graph contract. Cycles and missing dependency endpoints still produce a report so the valid structural portion can be inspected, but the command exits with status 1.
 
 For machine-readable reachability, use `questspec analyze quests.yml --from foundations.first_log --max-depth 2 --json`; the JSON envelope contains the absolute source, target profile, validity, partial state, structural summary, direction, and the complete query result.
+
+### Read-only browser preview
+
+`questspec serve <source>` starts a local source-authoring preview on literal IPv4 loopback `127.0.0.1`. The default port is `4173`; `--port 0` selects an available port, `--resources <catalog>` enables exact-runtime resource checks, and `--open` asks the operating system to open the printed URL. There is deliberately no host or remote-access option. Do not expose the service through a proxy or container port; authenticated remote collaboration is outside this release.
+
+The server watches only the selected source and optional catalog. A normalized edit replaces the current model even when semantic diagnostics exist. If syntax, schema, or typed-SNBT errors prevent normalization, the browser keeps the **last normalized snapshot**, labels it stale, and shows diagnostics for the current input. Repairing or atomically replacing the file refreshes the current model without a restart. The preview is strictly read-only: it never edits, formats, patches, creates, deletes, or drags source content back into YAML.
+
+The canvas preserves normalized authored coordinates, shapes, sizes, content, supported tasks and rewards, dependency direction, hidden-line policy, and supported control points. It is not the FTB Quests runtime: fonts, text wrapping, theme, shapes, sizes, and line rendering are browser approximations; component-dependent or unavailable item visuals use a deterministic neutral icon rather than Minecraft/FTB textures; system font fallback determines glyph appearance. QuestSpec bundles or downloads no Minecraft, FTB, modpack, registry, font, texture, JAR, or proprietary resource assets. Optional resource catalogs validate identifiers but do not provide visual assets.
+
+Dependency lines and analysis are structural only. They do not simulate startability, unlockability, completion, teams, tasks, rewards, thresholds, exclusions, or other runtime progression. Cross-chapter, missing, and ambiguous dependency endpoints remain inspectable but are not fabricated as drawable same-chapter edges.
+
+Troubleshooting:
+
+- **Address already in use:** choose another port or use `--port 0`; the bind address cannot be changed.
+- **Browser did not open:** copy the printed loopback URL into a browser. An `--open` failure is a warning and the server remains available.
+- **Changes do not appear:** confirm the editor saved or atomically replaced the exact selected source/catalog path. Symlinks, directories, oversized files, and unreadable replacements fail closed and are reported.
+- **Canvas says stale:** the current source could not normalize. Fix the displayed syntax/schema/typed-SNBT diagnostics; stale means the visible canvas is the last normalized snapshot, not the current file.
+- **Catalog unavailable:** restore a readable, regular, exact-profile JSON catalog. Source preview continues, but prior catalog results are not reused as current.
 
 Successful commands exit with status 0. Validation errors, semantic differences, unsupported data, and filesystem failures exit with status 1. Human diagnostics go to stderr; `--json` writes diagnostics or results to stdout.
 
@@ -194,12 +216,21 @@ pnpm install
 pnpm check
 ```
 
-Run the CLI directly from source and regenerate the public schema:
+Run the CLI directly from source, regenerate the public schema, or verify the publishable package:
 
 ```sh
 pnpm questspec --help
 pnpm schema:generate
+pnpm package
+pnpm package:pack
+pnpm package:contract
+pnpm package:smoke
+pnpm package:reproducibility
 ```
+
+`pnpm package` builds both applications and atomically assembles the only publishable root at `dist/package/`. `pnpm package:pack` and release publication run from that staged directory, never the workspace root or `apps/cli` in place; a direct workspace-root `pnpm pack` is intentionally invalid. Its generated manifest takes name, version, bin, engines, and runtime dependency names from `apps/cli/package.json`, resolves concrete exact registry versions from the workspace catalog, verifies the lockfile, and omits workspace/private/build-only metadata. The stage contains the executable Node bundle without source maps, only Vite-manifest-owned browser assets, the public schema, README, project license, and [third-party notices](THIRD_PARTY_NOTICES.md).
+
+`pnpm check` includes package assembly and the exact staged/tarball allowlist contract. The separate smoke installs the generated tarball in a clean external project and exercises the installed server; the reproducibility check compares two clean browser/package builds.
 
 Committed tests are hermetic product contracts and run in CI. External modpack corpora, JARs, generated registries, and Minecraft servers are QA inputs kept outside the repository. A QA discovery is reduced to a minimal committed regression test whenever possible rather than copying third-party data into fixtures.
 

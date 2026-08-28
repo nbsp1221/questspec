@@ -29,7 +29,8 @@
     "dist",
     "schema",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "type": "module",
   "publishConfig": {
@@ -39,6 +40,10 @@
     "build": "tsdown",
     "dev": "tsdown --watch",
     "lint": "oxlint . && eslint .",
+    "package": "node ../../scripts/package/assemble.mjs",
+    "package:contract": "node ../../scripts/package/contract.mjs",
+    "package:reproducibility": "node ../../scripts/package/reproducibility.mjs",
+    "package:smoke": "node ../../scripts/package/smoke.mjs",
     "questspec": "node src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
@@ -61,5 +66,6 @@
   },
   "engines": {
     "node": "^24.0.0 || >=26.0.0"
-  }
+  },
+  "schema": "schema/questspec-1.json"
 }
