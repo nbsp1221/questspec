@@ -154,6 +154,44 @@
   font-size: 0.85rem;
   margin: 0;
 }
+.chapterSubtitle {
+  color: var(--text);
+  margin-top: 0.3rem !important;
+}
+.structural {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+}
+.structural h3,
+.structural p,
+.structural dl {
+  margin: 0;
+}
+.structural dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1.25rem;
+  margin-top: 0.5rem;
+}
+.structural dl div {
+  min-width: 8rem;
+}
+.structural dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.structural dd {
+  margin: 0.1rem 0 0;
+  overflow-wrap: anywhere;
+}
+.structuralNote {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
 .fidelity p {
   color: var(--muted);
   font-size: 0.8rem;

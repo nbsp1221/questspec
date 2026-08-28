@@ -1,4 +1,4 @@
-import AxeBuilder from '@axe-core/playwright';
+import { AxeBuilder } from '@axe-core/playwright';
 import { type Page, expect, test } from '@playwright/test';
 import { makeSnapshot } from '../src/test/fixtures.ts';
 
@@ -37,11 +37,15 @@ test('narrow reduced-motion layout has no page-level horizontal overflow', async
   await mockPreview(page);
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Fit chapter' })).toBeVisible();
-  const dimensions = await page.evaluate(() => ({
+  const dimensions = await page.evaluate<{
+    client: number;
+    scroll: number;
+    transition: string;
+  }>(`(() => ({
     client: document.documentElement.clientWidth,
     scroll: document.documentElement.scrollWidth,
-    transition: getComputedStyle(document.querySelector('button')!).transitionDuration,
-  }));
+    transition: getComputedStyle(document.querySelector('button')).transitionDuration,
+  }))()`);
   expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client);
   expect(['0.01ms', '1e-05s']).toContain(dimensions.transition);
 });

@@ -5,12 +5,12 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "lint": "oxlint . && eslint .",
+    "lint": "oxlint . && eslint src e2e",
     "test": "pnpm test:unit",
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "test:e2e": "playwright test",
     "test:unit": "vitest run --config vitest.config.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.browser.json --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p src/tsconfig.json --noEmit && tsc -p e2e/tsconfig.json --noEmit"
   },
   "dependencies": {
     "@questspec/preview-contract": "workspace:*",
@@ -24,6 +24,7 @@
     "@playwright/test": "catalog:",
     "@types/d3-selection": "catalog:",
     "@types/d3-zoom": "catalog:",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",

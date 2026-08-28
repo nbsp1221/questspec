@@ -4,7 +4,7 @@ import type { PreviewApi } from './api/client.ts';
 import styles from './App.module.css';
 import { QuestCanvas } from './canvas/QuestCanvas.tsx';
 import { Inspector } from './inspector/Inspector.tsx';
-import { localizeText } from './localization.ts';
+import { localizeLines, localizeText } from './localization.ts';
 import { snapshotStateLabel, usePreviewClient } from './state.ts';
 
 export function App({ api }: { readonly api: PreviewApi }) {
@@ -21,6 +21,10 @@ export function App({ api }: { readonly api: PreviewApi }) {
   const selectedLocale =
     locale && model?.locales.includes(locale) ? locale : (model?.defaultLocale ?? 'en_us');
   const chapter = recoverChapter(model, chapterId);
+  const dependencyReferences = useMemo(
+    () => model?.chapters.flatMap((entry) => entry.dependencyReferences) ?? [],
+    [model],
+  );
   const selectedQuest = chapter?.quests.find((quest) => quest.instanceId === selectedId) ?? null;
 
   useEffect(() => {
@@ -206,11 +210,29 @@ export function App({ api }: { readonly api: PreviewApi }) {
                         ).value
                       }
                     </h2>
+                    {localizeChapterSubtitle(chapter, selectedLocale, model.defaultLocale).map(
+                      (line, index) => (
+                        <p className={styles.chapterSubtitle} key={`${index}-${line}`}>
+                          {line}
+                        </p>
+                      ),
+                    )}
                   </div>
                   <span>
                     {chapter.quests.length} quests · {chapter.dependencyEdges.length} drawable edges
                   </span>
                 </div>
+                <section aria-labelledby="chapter-metadata-heading" className={styles.structural}>
+                  <h3 id="chapter-metadata-heading">Chapter metadata</h3>
+                  <dl>
+                    <Metadata term="Progression mode" value={chapter.progressionMode} />
+                    <Metadata
+                      term="Chapter icon"
+                      value={`${chapter.icon.id} (neutral browser fallback)`}
+                    />
+                  </dl>
+                </section>
+                <GraphMetadata model={model} />
                 <div className={styles.search}>
                   <label htmlFor="quest-search">Find a quest</label>
                   <input
@@ -257,8 +279,8 @@ export function App({ api }: { readonly api: PreviewApi }) {
                   />
                   {inspectorOpen && selectedQuest && (
                     <Inspector
-                      chapter={chapter}
                       defaultLocale={model.defaultLocale}
+                      dependencyReferences={dependencyReferences}
                       diagnostics={client.snapshot.diagnostics}
                       locale={selectedLocale}
                       onClose={() => {
@@ -281,6 +303,79 @@ export function App({ api }: { readonly api: PreviewApi }) {
       )}
     </div>
   );
+}
+
+function localizeChapterSubtitle(chapter: PreviewChapter, locale: string, defaultLocale: string) {
+  return localizeLines(chapter.subtitle, locale, defaultLocale, chapter.key).value;
+}
+
+function GraphMetadata({ model }: { readonly model: PreviewModelV1 }) {
+  const { graph } = model;
+  return (
+    <section aria-labelledby="graph-metadata-heading" className={styles.structural}>
+      <h3 id="graph-metadata-heading">Structural graph</h3>
+      <p className={styles.structuralNote}>
+        Descriptive dependency structure only; this does not simulate unlocks or progression.
+      </p>
+      <dl>
+        <Metadata term="Availability" value={graph.availability} />
+        {graph.summary ? (
+          <>
+            <Metadata term="Quests" value={String(graph.summary.nodeCount)} />
+            <Metadata term="Dependencies" value={String(graph.summary.edgeCount)} />
+            <Metadata
+              term="Maximum depth"
+              value={formatNullableNumber(graph.summary.maximumDepth)}
+            />
+            <Metadata term="Roots" value={formatKeys(graph.summary.roots)} />
+            <Metadata term="Leaves" value={formatKeys(graph.summary.leaves)} />
+            <Metadata term="Isolated quests" value={formatKeys(graph.summary.isolated)} />
+            <Metadata
+              term="Cycle components"
+              value={
+                graph.summary.cycleComponents.length
+                  ? graph.summary.cycleComponents
+                      .map((component) => component.join(' → '))
+                      .join('; ')
+                  : 'none'
+              }
+            />
+            <Metadata
+              term="Weak components"
+              value={
+                graph.summary.weakComponents
+                  .map((component, index) => `${index}: ${component.join(', ')}`)
+                  .join('; ') || 'none'
+              }
+            />
+            <Metadata
+              term="Critical path"
+              value={graph.summary.criticalPath?.join(' → ') ?? 'unavailable'}
+            />
+          </>
+        ) : (
+          <Metadata term="Summary" value="unavailable" />
+        )}
+      </dl>
+    </section>
+  );
+}
+
+function Metadata({ term, value }: { readonly term: string; readonly value: string }) {
+  return (
+    <div>
+      <dt>{term}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
+function formatKeys(keys: readonly string[]) {
+  return keys.join(', ') || 'none';
+}
+
+function formatNullableNumber(value: number | null) {
+  return value === null ? 'unavailable' : String(value);
 }
 
 function recoverChapter(model: PreviewModelV1 | null, id: string | null): PreviewChapter | null {

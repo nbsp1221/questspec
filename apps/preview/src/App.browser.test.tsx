@@ -50,10 +50,17 @@ async function pressCanvas(key: string) {
   }
   listbox.focus();
   listbox.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key }));
+
   await new Promise((resolve) => {
     setTimeout(resolve, 0);
   });
   return listbox;
+}
+
+function definitionValues(term: string) {
+  return Array.from(document.querySelectorAll('dt'))
+    .filter((entry) => entry.textContent === term)
+    .map((entry) => entry.nextElementSibling?.textContent ?? '');
 }
 
 describe('preview browser application', () => {
@@ -131,6 +138,7 @@ describe('preview browser application', () => {
         {
           code: 'IDENTITY_DUPLICATE',
           message: 'Duplicate key.',
+
           path: ['chapters', 0],
           severity: 'error',
         },
@@ -163,6 +171,71 @@ describe('preview browser application', () => {
     api.handlers?.onDisconnected();
     await expect.element(page.getByText(/Disconnected — reconnecting/)).toBeVisible();
     expect(document.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
+  });
+
+  it('opens both ends of a cross-chapter reference by pointer while retaining listbox focus', async () => {
+    await renderApp();
+    const listbox = page.getByRole('listbox', { name: 'Quests in chapter' });
+    await listbox.getByRole('option').first().click();
+    await expect
+      .element(page.getByRole('heading', { name: 'Quest foundations.start' }))
+      .toBeVisible();
+    await expect.element(page.getByText('foundations.start → automation.remote')).toBeVisible();
+    expect(document.activeElement).toBe(document.querySelector('[role="listbox"]'));
+
+    await page.getByRole('button', { name: /Close/ }).click();
+    await page.getByRole('button', { name: /Automation/ }).click();
+    const remoteListbox = page.getByRole('listbox', { name: 'Quests in chapter' });
+    await remoteListbox.getByRole('option').click();
+    await expect.element(page.getByRole('heading', { name: 'Remote automation' })).toBeVisible();
+    await expect.element(page.getByText('foundations.start → automation.remote')).toBeVisible();
+    expect(document.querySelectorAll('[data-edge-id]')).toHaveLength(0);
+  });
+
+  it('surfaces chapter and structural graph metadata without progression claims', async () => {
+    await renderApp();
+    await expect.element(page.getByText('Start here')).toBeVisible();
+    await expect
+      .element(page.getByText('minecraft:iron_pickaxe (neutral browser fallback)'))
+      .toBeVisible();
+    await expect.element(page.getByText('partial', { exact: true })).toBeVisible();
+    expect(definitionValues('Progression mode')).toEqual(['default']);
+    expect(definitionValues('Availability')).toEqual(['partial']);
+    await expect
+      .element(page.getByText(/Descriptive dependency structure only/).first())
+      .toBeVisible();
+
+    await page.getByRole('listbox').getByRole('option').first().click();
+    expect(definitionValues('Cycle member')).toEqual(['No']);
+    expect(definitionValues('Minimum depth')).toEqual(['1']);
+    expect(definitionValues('Maximum depth').at(-1)).toBe('1');
+    expect(definitionValues('Weak component')).toEqual(['0']);
+  });
+
+  it('renders explicit unavailable model and quest graph states', async () => {
+    const snapshot = makeSnapshot();
+    const firstChapter = snapshot.model!.chapters[0];
+    const firstQuest = firstChapter.quests[0];
+    await renderApp({
+      ...snapshot,
+      model: {
+        ...snapshot.model!,
+        chapters: [
+          {
+            ...firstChapter,
+            quests: [{ ...firstQuest, graph: null }, ...firstChapter.quests.slice(1)],
+          },
+          ...snapshot.model!.chapters.slice(1),
+        ],
+        graph: { availability: 'unavailable', summary: null },
+      },
+    });
+    await expect.element(page.getByText('unavailable', { exact: true }).first()).toBeVisible();
+    expect(definitionValues('Summary')).toEqual(['unavailable']);
+    await page.getByRole('listbox').getByRole('option').first().click();
+    await expect
+      .element(page.getByText('Structural graph metadata unavailable for this quest.'))
+      .toBeVisible();
   });
 
   it('renders empty normalized state without inventing a canvas', async () => {

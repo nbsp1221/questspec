@@ -232,6 +232,8 @@ export function QuestCanvas({
                 onSelect={() => {
                   setActiveId(quest.instanceId);
                   onSelect(quest.instanceId);
+                  onOpenInspector();
+                  svgRef.current?.focus();
                 }}
                 quest={quest}
                 selected={selectedId === quest.instanceId}

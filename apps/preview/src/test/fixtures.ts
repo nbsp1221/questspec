@@ -68,7 +68,7 @@ export function makeQuest(instanceId: string, key: string, x: number, y: number)
 export function makeSnapshot(overrides: Partial<PreviewSnapshotV1> = {}): PreviewSnapshotV1 {
   const first = {
     ...makeQuest('chapters/0/quests/0', 'foundations.start', 0, 0),
-    outgoingDependencyIds: ['edge-straight'],
+    outgoingDependencyIds: ['edge-straight', 'ref-cross-chapter'],
     tasks: [
       {
         ...taskBase,
@@ -257,12 +257,50 @@ export function makeSnapshot(overrides: Partial<PreviewSnapshotV1> = {}): Previe
     subtitle: { en_us: ['Start here'], ko_kr: ['여기서 시작'] },
     title: { en_us: 'Foundations', ko_kr: '기초' },
   };
+  const remoteQuest = {
+    ...makeQuest('chapters/1/quests/0', 'automation.remote', 0, 0),
+    graph: { cycle: false, maxDepth: 2, minDepth: 2, weakComponent: 0 },
+    incomingDependencyIds: ['ref-cross-chapter'],
+    title: { en_us: 'Remote automation' },
+  } as PreviewQuest;
+  const remoteChapter: PreviewChapter = {
+    ...chapter,
+    dependencyEdges: [],
+    dependencyReferences: [
+      {
+        controlPoints: null,
+        declaringInstanceId: remoteQuest.instanceId,
+        dependencyIndex: 0,
+        hidden: false,
+        id: 'ref-cross-chapter',
+        sameChapter: false,
+        sourceChapterKey: chapter.key,
+        sourceInstanceId: first.instanceId,
+        sourceLogicalKey: first.key,
+        status: 'resolved',
+        targetChapterKey: 'automation',
+        targetInstanceId: remoteQuest.instanceId,
+        targetLogicalKey: remoteQuest.key,
+      },
+    ],
+    filename: '02_automation',
+    fitBounds: remoteQuest.geometry
+      ? { height: 48, maxX: 24, maxY: 24, minX: -24, minY: -24, width: 48 }
+      : null,
+    icon: { id: 'minecraft:redstone', components: {} },
+    key: 'automation',
+    localKey: 'automation',
+    progressionMode: 'linear',
+    quests: [remoteQuest],
+    subtitle: { en_us: ['Cross-chapter systems'] },
+    title: { en_us: 'Automation' },
+  };
   const base: PreviewSnapshotV1 = {
     currentInput: { catalogState: 'current', sourceState: 'normalized', validationState: 'valid' },
     diagnostics: [],
     generation: 1,
     model: {
-      chapters: [chapter],
+      chapters: [chapter, remoteChapter],
       defaultLocale: 'en_us',
       defaultQuestShape: 'circle',
       graph: {
@@ -270,16 +308,16 @@ export function makeSnapshot(overrides: Partial<PreviewSnapshotV1> = {}): Previe
         summary: {
           criticalPath: null,
           cycleComponents: [],
-          edgeCount: 2,
+          edgeCount: 3,
           isolated: [],
-          leaves: [duplicate.key],
+          leaves: [duplicate.key, remoteQuest.key],
           maxDepthByQuest: null,
           maximumDepth: null,
           minDepthByQuest: null,
-          nodeCount: 3,
+          nodeCount: 4,
           roots: [first.key],
           topologicalOrder: null,
-          weakComponents: [[first.key, second.key]],
+          weakComponents: [[first.key, second.key, duplicate.key, remoteQuest.key]],
         },
       },
       groups: [{ key: 'industry', title: { en_us: 'Industry', ko_kr: '산업' } }],

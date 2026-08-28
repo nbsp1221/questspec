@@ -217,6 +217,9 @@ importers:
       '@types/d3-zoom':
         specifier: 'catalog:'
         version: 3.0.8
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.18

@@ -1,5 +1,5 @@
 import type {
-  PreviewChapter,
+  PreviewDependencyReference,
   PreviewDiagnostic,
   PreviewProvenance,
   PreviewQuest,
@@ -10,8 +10,8 @@ import { localizeLines, localizeText } from '../localization.ts';
 import styles from './Inspector.module.css';
 
 interface InspectorProperties {
-  readonly chapter: PreviewChapter;
   readonly defaultLocale: string;
+  readonly dependencyReferences: readonly PreviewDependencyReference[];
   readonly diagnostics: readonly PreviewDiagnostic[];
   readonly locale: string;
   readonly onClose: () => void;
@@ -20,8 +20,8 @@ interface InspectorProperties {
 }
 
 export function Inspector({
-  chapter,
   defaultLocale,
+  dependencyReferences,
   diagnostics,
   locale,
   onClose,
@@ -31,9 +31,9 @@ export function Inspector({
   const title = localizeText(quest.title, locale, defaultLocale, quest.key);
   const subtitle = localizeText(quest.subtitle, locale, defaultLocale, quest.key);
   const description = localizeLines(quest.description, locale, defaultLocale, quest.key);
-  const references = chapter.dependencyReferences.filter(
+  const references = dependencyReferences.filter(
     (reference) =>
-      reference.declaringInstanceId === quest.instanceId ||
+      reference.targetInstanceId === quest.instanceId ||
       reference.sourceInstanceId === quest.instanceId,
   );
   return (
@@ -90,6 +90,23 @@ export function Inspector({
           ],
         ]}
       />
+      <Section title="Structural graph metadata">
+        <p className={styles.notice}>
+          Descriptive dependency structure only; this does not simulate unlocks or progression.
+        </p>
+        {quest.graph ? (
+          <DefinitionList
+            values={[
+              ['Cycle member', yesNo(quest.graph.cycle)],
+              ['Minimum depth', graphDepth(quest.graph.minDepth)],
+              ['Maximum depth', graphDepth(quest.graph.maxDepth)],
+              ['Weak component', String(quest.graph.weakComponent)],
+            ]}
+          />
+        ) : (
+          <p>Structural graph metadata unavailable for this quest.</p>
+        )}
+      </Section>
       {quest.icon && Object.keys(quest.icon.components).length > 0 && (
         <Section title="Icon components">
           <DefinitionList values={Object.entries(quest.icon.components)} />
@@ -350,6 +367,10 @@ function Section({
       {children}
     </section>
   );
+}
+
+function graphDepth(value: number | null) {
+  return value === null ? 'unavailable' : String(value);
 }
 
 function yesNo(value: boolean) {
