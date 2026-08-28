@@ -35,6 +35,12 @@ import {
 } from '@questspec/core';
 import { type CAC, cac } from 'cac';
 import pkg from '../package.json' with { type: 'json' };
+import { openPreviewBrowser } from './preview/browser-open.ts';
+import { PreviewLoader } from './preview/loader.ts';
+import { type PreviewServer, startPreviewServer } from './preview/server.ts';
+import { PreviewSession } from './preview/session.ts';
+import { loadPreviewStaticAssets } from './preview/static-assets.ts';
+import { type PreviewWatcher, startPreviewWatcher } from './preview/watcher.ts';
 
 interface CommonOptions {
   json?: boolean;
@@ -51,6 +57,12 @@ interface ImportOptions extends CommonOptions {
   force?: boolean;
   idMap?: string;
   output: string;
+}
+
+interface ServeOptions {
+  open?: boolean;
+  port?: number | string;
+  resources?: string;
 }
 
 interface DiffOptions extends CommonOptions {
@@ -304,6 +316,15 @@ export function createCli(): CAC {
         }
       }
       process.exitCode = 1;
+    });
+
+  cli
+    .command('serve <source>', 'Serve a local read-only browser preview')
+    .option('--port <integer>', 'Loopback port', { default: 4173 })
+    .option('--open', 'Open the bound preview URL in the default browser')
+    .option('--resources <catalog>', 'Validate references against an exact-runtime catalog')
+    .action(async (source: string, options: ServeOptions) => {
+      await runPreviewServe(source, options);
     });
 
   cli
@@ -665,4 +686,82 @@ function collectDifferences(expected: unknown, actual: unknown, path = '$'): str
   return [...keys]
     .sort(compareQuestKeys)
     .flatMap((key) => collectDifferences(expectedRecord[key], actualRecord[key], `${path}.${key}`));
+}
+
+export async function runPreviewServe(source: string, options: ServeOptions): Promise<void> {
+  const port = parseServePort(options.port);
+  const sourcePath = resolve(source);
+  const catalogPath = options.resources === undefined ? undefined : resolve(options.resources);
+  const loader = new PreviewLoader({ catalogPath, sourcePath });
+  const session = new PreviewSession(loader, { catalogRequested: catalogPath !== undefined });
+  let server: PreviewServer | undefined;
+  let watcher: PreviewWatcher | undefined;
+  let cleaned = false;
+
+  const cleanup = async (): Promise<void> => {
+    if (cleaned) {
+      return;
+    }
+    cleaned = true;
+    await watcher?.close().catch(() => undefined);
+    await server?.close().catch(() => undefined);
+    session.close();
+  };
+
+  try {
+    await session.refresh('startup');
+    const assets = await loadPreviewStaticAssets();
+    server = await startPreviewServer({ assets, port, session });
+
+    let resolveLifecycle!: (result: 'failure' | 'signal') => void;
+    const lifecycle = new Promise<'failure' | 'signal'>((resolveLifecyclePromise) => {
+      resolveLifecycle = resolveLifecyclePromise;
+    });
+
+    const onSignal = (): void => resolveLifecycle('signal');
+
+    process.once('SIGINT', onSignal);
+    process.once('SIGTERM', onSignal);
+    try {
+      watcher = await startPreviewWatcher(session, {
+        catalogPath,
+        onError: () => resolveLifecycle('failure'),
+        sourcePath,
+      });
+      console.log(`Preview: ${server.url}`);
+      console.log(`Source: ${sourcePath}`);
+      console.log(`Target: ${targetLabel()}`);
+      if (options.open === true) {
+        try {
+          await openPreviewBrowser(server.url);
+        } catch {
+          console.warn('Warning: the preview browser could not be opened; use the URL above');
+        }
+      }
+      if ((await lifecycle) === 'failure') {
+        process.exitCode = 1;
+        console.error('Preview watcher failed');
+      }
+    } finally {
+      process.off('SIGINT', onSignal);
+      process.off('SIGTERM', onSignal);
+    }
+  } finally {
+    await cleanup();
+  }
+}
+
+function parseServePort(value: number | string | undefined): number {
+  const normalized = value ?? 4173;
+  if (
+    (typeof normalized === 'string' && !/^\d+$/u.test(normalized)) ||
+    (typeof normalized !== 'string' && typeof normalized !== 'number')
+  ) {
+    throw new Error('questspec serve: --port must be 0 or an integer from 1 through 65535');
+  }
+  const port = Number(normalized);
+  if (!Number.isSafeInteger(port) || port < 0 || port > 65_535) {
+    throw new Error('questspec serve: --port must be 0 or an integer from 1 through 65535');
+  }
+  return port;
 }
