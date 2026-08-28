@@ -47,9 +47,14 @@ export interface PreviewSessionLike {
   subscribe(subscriber: (event: PreviewEventV1) => void): () => void;
 }
 
+export interface PreviewServerHooks {
+  readonly afterListen?: (server: Server) => void;
+}
+
 export interface StartPreviewServerOptions {
   readonly assets: StaticAssetProvider;
   readonly heartbeatMs?: number;
+  readonly hooks?: PreviewServerHooks;
   readonly maxSseClients?: number;
   readonly ownSession?: boolean;
   readonly port: number;
@@ -57,6 +62,7 @@ export interface StartPreviewServerOptions {
 }
 
 export interface PreviewServer {
+  readonly failure: Promise<void>;
   readonly host: typeof HOST;
   readonly port: number;
   readonly url: string;
@@ -68,6 +74,14 @@ export class PreviewServerAddressInUseError extends Error {
 
   constructor(port: number) {
     super(`Preview server port ${port} is already in use`);
+  }
+}
+
+export class PreviewServerRuntimeError extends Error {
+  override readonly name = 'PreviewServerRuntimeError';
+
+  constructor(options: ErrorOptions = {}) {
+    super('Preview server failed after startup', options);
   }
 }
 
@@ -94,6 +108,15 @@ export async function startPreviewServer(
   const clients = new Set<SseClient>();
   let actualPort = 0;
   let closing = false;
+  let listening = false;
+  let failureSettled = false;
+  let resolveFailure!: () => void;
+  let rejectFailure!: (error: PreviewServerRuntimeError) => void;
+  const failure = new Promise<void>((resolve, reject) => {
+    resolveFailure = resolve;
+    rejectFailure = reject;
+  });
+  void failure.catch(() => undefined);
   const server = createServer(
     {
       highWaterMark: 16 * 1024,
@@ -112,6 +135,16 @@ export async function startPreviewServer(
     },
   );
   configureServer(server);
+
+  const onRuntimeError = (error: Error): void => {
+    if (!listening || closing || failureSettled) {
+      return;
+    }
+    failureSettled = true;
+    rejectFailure(new PreviewServerRuntimeError({ cause: error }));
+  };
+
+  server.on('error', onRuntimeError);
   server.on('connection', (socket) => {
     sockets.add(socket);
     socket.setTimeout(30_000);
@@ -140,12 +173,20 @@ export async function startPreviewServer(
     );
   }
   actualPort = address.port;
+  listening = true;
+  options.hooks?.afterListen?.(server);
 
   const close = async (): Promise<void> => {
     if (closing) {
       return closePromise;
     }
     closing = true;
+    listening = false;
+    server.off('error', onRuntimeError);
+
+    const ignoreCloseError = (): void => undefined;
+
+    server.on('error', ignoreCloseError);
     for (const client of clients) {
       client.close();
     }
@@ -155,12 +196,20 @@ export async function startPreviewServer(
       }
     }, CLOSE_GRACE_MS);
     timer.unref();
-    await new Promise<void>((resolve) => {
-      server.close(() => resolve());
-    });
-    clearTimeout(timer);
-    if (options.ownSession === true) {
-      options.session.close();
+    try {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+      });
+    } finally {
+      clearTimeout(timer);
+      server.off('error', ignoreCloseError);
+      if (!failureSettled) {
+        failureSettled = true;
+        resolveFailure();
+      }
+      if (options.ownSession === true) {
+        options.session.close();
+      }
     }
   };
 
@@ -175,6 +224,7 @@ export async function startPreviewServer(
 
   return Object.freeze({
     close: closeOnce,
+    failure,
     host: HOST,
     port: actualPort,
     url: `http://${HOST}:${actualPort}`,

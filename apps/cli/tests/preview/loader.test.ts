@@ -1,9 +1,10 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PreviewInputError } from '../../src/preview/input.ts';
 import { PreviewLoader } from '../../src/preview/loader.ts';
+import { PreviewSession } from '../../src/preview/session.ts';
 
 const source = `questspec: 1
 target:
@@ -110,4 +111,57 @@ describe('preview loader', () => {
     await writeFile(paths.sourcePath, source.replace('Start}', 'Changed}'));
     expect((await loader.evaluate(request('runtime'))).inputIdentity).not.toBe(first.inputIdentity);
   });
+
+  it.each([
+    { initial: 'new', replacement: 'old' },
+    { initial: 'old', replacement: 'new' },
+  ])(
+    'evaluates only a stabilized pair across a source-$initial/catalog-$replacement transition',
+    async ({ initial, replacement }) => {
+      const paths = await fixture();
+
+      const versionSource = (version: string) =>
+        source.replace('Start}', `${version}}`).replace('minecraft:book', `minecraft:${version}`);
+
+      const versionCatalog = (version: string) =>
+        JSON.stringify({
+          ...JSON.parse(exactCatalog),
+          items: [`minecraft:${version}`],
+        });
+
+      await writeFile(paths.sourcePath, versionSource(initial));
+      await writeFile(paths.catalogPath, versionCatalog(initial));
+
+      const loader = new PreviewLoader({
+        ...paths,
+        capture: {
+          attempts: 2,
+          hooks: {
+            afterCapture: async (kind, attempt) => {
+              if (kind === 'source' && attempt === 1) {
+                const nextSource = join(paths.root, 'next-quests.yml');
+                const nextCatalog = join(paths.root, 'next-resources.json');
+                await writeFile(nextSource, versionSource(replacement));
+                await writeFile(nextCatalog, versionCatalog(replacement));
+                await rename(nextSource, paths.sourcePath);
+                await rename(nextCatalog, paths.catalogPath);
+              }
+            },
+          },
+        },
+      });
+      const session = new PreviewSession(loader, { catalogRequested: true });
+      await session.refresh('startup');
+      const published = session.getSnapshot();
+
+      expect(published.currentInput).toMatchObject({
+        catalogState: 'current',
+        sourceState: 'normalized',
+        validationState: 'valid',
+      });
+      expect(published.diagnostics).toEqual([]);
+      expect(published.model?.chapters[0].quests[0].title.en_us).toBe(replacement);
+      session.close();
+    },
+  );
 });

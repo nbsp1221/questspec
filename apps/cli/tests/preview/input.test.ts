@@ -23,7 +23,11 @@ describe('preview safe input capture', () => {
     const first = await capturePreviewInputPair(source, catalog);
     const second = await capturePreviewInputPair(source, catalog);
     expect(first.inputIdentity).toBe(second.inputIdentity);
-    expect(new TextDecoder().decode(first.source.bytes)).toBe('questspec: 1\n');
+    expect(first.source.status).toBe('fulfilled');
+    if (first.source.status !== 'fulfilled') {
+      throw first.source.reason;
+    }
+    expect(new TextDecoder().decode(first.source.value.bytes)).toBe('questspec: 1\n');
     expect(first.inputIdentity).not.toContain(root);
 
     await writeFile(source, 'questspec: 2\n');
@@ -100,5 +104,69 @@ describe('preview safe input capture', () => {
     }
     expect(error).toBeInstanceOf(PreviewInputError);
     expect(error).toMatchObject({ code: 'INPUT_CHANGED' });
+  });
+
+  it.each([
+    { initial: 'new', replacement: 'old' },
+    { initial: 'old', replacement: 'new' },
+  ])(
+    'retries the whole pair instead of returning source-$initial/catalog-$replacement',
+    async ({ initial, replacement }) => {
+      const root = await temporaryRoot();
+      const source = join(root, 'quests.yml');
+      const catalog = join(root, 'resources.json');
+      await writeFile(source, `source-${initial}`);
+      await writeFile(catalog, `catalog-${initial}`);
+
+      const pair = await capturePreviewInputPair(source, catalog, {
+        attempts: 2,
+        hooks: {
+          afterCapture: async (kind, attempt) => {
+            if (kind === 'source' && attempt === 1) {
+              const nextSource = join(root, 'next-quests.yml');
+              const nextCatalog = join(root, 'next-resources.json');
+              await writeFile(nextSource, `source-${replacement}`);
+              await writeFile(nextCatalog, `catalog-${replacement}`);
+              await rename(nextSource, source);
+              await rename(nextCatalog, catalog);
+            }
+          },
+        },
+      });
+
+      expect(pair.source.status).toBe('fulfilled');
+      expect(pair.catalog?.status).toBe('fulfilled');
+      if (pair.source.status !== 'fulfilled' || pair.catalog?.status !== 'fulfilled') {
+        return;
+      }
+      expect(new TextDecoder().decode(pair.source.value.bytes)).toBe(`source-${replacement}`);
+      expect(new TextDecoder().decode(pair.catalog.value.bytes)).toBe(`catalog-${replacement}`);
+    },
+  );
+
+  it('fails closed on a regular-to-symlink swap between pre-lstat and open', async () => {
+    const root = await temporaryRoot();
+    const file = join(root, 'quests.yml');
+    const original = join(root, 'original.yml');
+    const target = join(root, 'target.yml');
+    await writeFile(file, 'original');
+    await writeFile(target, 'symlink target');
+
+    let error: unknown;
+    try {
+      await capturePreviewInput(file, 'source', {
+        attempts: 1,
+        hooks: {
+          afterPreStat: async () => {
+            await rename(file, original);
+            await symlink(target, file);
+          },
+        },
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(PreviewInputError);
+    expect(['INPUT_CHANGED', 'INPUT_SYMLINK']).toContain((error as PreviewInputError).code);
   });
 });

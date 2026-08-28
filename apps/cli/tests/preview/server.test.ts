@@ -1,3 +1,4 @@
+import type { Server } from 'node:http';
 import { type AddressInfo, Socket, createServer as createNetServer } from 'node:net';
 import {
   PREVIEW_SCHEMA_VERSION,
@@ -8,6 +9,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   type PreviewServer,
   PreviewServerAddressInUseError,
+  PreviewServerRuntimeError,
   PreviewServerStartupError,
   type PreviewSessionLike,
   startPreviewServer,
@@ -516,6 +518,7 @@ describe('leak resistance, limits, startup, and shutdown', () => {
     await expect(
       startPreviewServer({ assets: assets(), port: 65_536, session: new FakeSession() }),
     ).rejects.toBeInstanceOf(PreviewServerStartupError);
+
     const occupied = createNetServer();
     await new Promise<void>((resolve) => {
       occupied.listen(0, '127.0.0.1', resolve);
@@ -533,6 +536,34 @@ describe('leak resistance, limits, startup, and shutdown', () => {
         }
       });
     });
+  });
+
+  it('reports post-listen errors and suppresses expected errors during close', async () => {
+    let rawServer: Server | undefined;
+    const failed = await startPreviewServer({
+      assets: assets(),
+      hooks: { afterListen: (value) => (rawServer = value) },
+      port: 0,
+      session: new FakeSession(),
+    });
+    openServers.add(failed);
+    rawServer!.emit('error', new Error('injected post-listen failure'));
+    await expect(failed.failure).rejects.toBeInstanceOf(PreviewServerRuntimeError);
+    await failed.close();
+    openServers.delete(failed);
+
+    const closing = await startPreviewServer({
+      assets: assets(),
+      hooks: { afterListen: (value) => (rawServer = value) },
+      port: 0,
+      session: new FakeSession(),
+    });
+    openServers.add(closing);
+    const closePromise = closing.close();
+    rawServer!.emit('error', new Error('expected during close'));
+    await closePromise;
+    await expect(closing.failure).resolves.toBeUndefined();
+    openServers.delete(closing);
   });
 
   it('closes idempotently, drains SSE clients, and closes only owned sessions', async () => {

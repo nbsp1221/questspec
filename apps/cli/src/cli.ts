@@ -688,10 +688,25 @@ function collectDifferences(expected: unknown, actual: unknown, path = '$'): str
     .flatMap((key) => collectDifferences(expectedRecord[key], actualRecord[key], `${path}.${key}`));
 }
 
-export async function runPreviewServe(source: string, options: ServeOptions): Promise<void> {
+export interface PreviewServeDependencies {
+  readonly loadAssets?: typeof loadPreviewStaticAssets;
+  readonly openBrowser?: typeof openPreviewBrowser;
+  readonly startServer?: typeof startPreviewServer;
+  readonly startWatcher?: typeof startPreviewWatcher;
+}
+
+export async function runPreviewServe(
+  source: string,
+  options: ServeOptions,
+  dependencies: PreviewServeDependencies = {},
+): Promise<void> {
   const port = parseServePort(options.port);
   const sourcePath = resolve(source);
   const catalogPath = options.resources === undefined ? undefined : resolve(options.resources);
+  const loadAssets = dependencies.loadAssets ?? loadPreviewStaticAssets;
+  const openBrowser = dependencies.openBrowser ?? openPreviewBrowser;
+  const startServer = dependencies.startServer ?? startPreviewServer;
+  const startWatcher = dependencies.startWatcher ?? startPreviewWatcher;
   const loader = new PreviewLoader({ catalogPath, sourcePath });
   const session = new PreviewSession(loader, { catalogRequested: catalogPath !== undefined });
   let server: PreviewServer | undefined;
@@ -710,22 +725,24 @@ export async function runPreviewServe(source: string, options: ServeOptions): Pr
 
   try {
     await session.refresh('startup');
-    const assets = await loadPreviewStaticAssets();
-    server = await startPreviewServer({ assets, port, session });
+    const assets = await loadAssets();
+    server = await startServer({ assets, port, session });
 
-    let resolveLifecycle!: (result: 'failure' | 'signal') => void;
-    const lifecycle = new Promise<'failure' | 'signal'>((resolveLifecyclePromise) => {
+    let resolveLifecycle!: (result: 'server' | 'signal' | 'watcher') => void;
+    const lifecycle = new Promise<'server' | 'signal' | 'watcher'>((resolveLifecyclePromise) => {
       resolveLifecycle = resolveLifecyclePromise;
     });
 
     const onSignal = (): void => resolveLifecycle('signal');
 
+    void server.failure.catch(() => resolveLifecycle('server'));
+
     process.once('SIGINT', onSignal);
     process.once('SIGTERM', onSignal);
     try {
-      watcher = await startPreviewWatcher(session, {
+      watcher = await startWatcher(session, {
         catalogPath,
-        onError: () => resolveLifecycle('failure'),
+        onError: () => resolveLifecycle('watcher'),
         sourcePath,
       });
       console.log(`Preview: ${server.url}`);
@@ -733,14 +750,15 @@ export async function runPreviewServe(source: string, options: ServeOptions): Pr
       console.log(`Target: ${targetLabel()}`);
       if (options.open === true) {
         try {
-          await openPreviewBrowser(server.url);
+          await openBrowser(server.url);
         } catch {
           console.warn('Warning: the preview browser could not be opened; use the URL above');
         }
       }
-      if ((await lifecycle) === 'failure') {
+      const result = await lifecycle;
+      if (result !== 'signal') {
         process.exitCode = 1;
-        console.error('Preview watcher failed');
+        console.error(result === 'server' ? 'Preview server failed' : 'Preview watcher failed');
       }
     } finally {
       process.off('SIGINT', onSignal);

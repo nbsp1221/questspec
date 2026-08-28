@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
 import type { PreviewDiagnostic, PreviewNotice } from '@questspec/preview-contract';
 import {
@@ -21,7 +20,7 @@ import {
   type CapturePreviewInputOptions,
   type CapturedPreviewInput,
   PreviewInputError,
-  capturePreviewInput,
+  capturePreviewInputPair,
 } from './input.ts';
 import { projectPreviewModel } from './model.ts';
 import { projectPreviewProvenance } from './provenance.ts';
@@ -50,12 +49,12 @@ export class PreviewLoader implements PreviewSessionEvaluator {
   }
 
   async evaluate(request: PreviewEvaluationRequest): Promise<PreviewSessionEvaluation> {
-    const [sourceResult, catalogResult] = await Promise.allSettled([
-      capturePreviewInput(this.#sourcePath, 'source', this.#capture),
-      this.#catalogPath === undefined
-        ? Promise.resolve(undefined)
-        : capturePreviewInput(this.#catalogPath, 'catalog', this.#capture),
-    ]);
+    const pair = await capturePreviewInputPair(this.#sourcePath, this.#catalogPath, this.#capture);
+    const sourceResult = pair.source;
+    const catalogResult: PromiseSettledResult<CapturedPreviewInput | undefined> = pair.catalog ?? {
+      status: 'fulfilled',
+      value: undefined,
+    };
 
     if (request.phase === 'startup') {
       if (sourceResult.status === 'rejected') {
@@ -84,7 +83,7 @@ export class PreviewLoader implements PreviewSessionEvaluator {
 
     return {
       catalog,
-      inputIdentity: evaluationIdentity(sourceResult, catalogResult),
+      inputIdentity: pair.inputIdentity,
       source: evaluatedSource.outcome,
     };
   }
@@ -220,26 +219,4 @@ function normalizeInputFailure(error: unknown, kind: 'catalog' | 'source'): Prev
     : new PreviewInputError('INPUT_NOT_READABLE', kind, `The ${kind} is missing or unreadable`, {
         cause: error,
       });
-}
-
-function evaluationIdentity(
-  source: PromiseSettledResult<CapturedPreviewInput>,
-  catalog: PromiseSettledResult<CapturedPreviewInput | undefined>,
-): string {
-  const hash = createHash('sha256');
-  hash.update('questspec-preview-evaluation-v1\0');
-  hash.update(resultIdentity(source));
-  hash.update('\0');
-  hash.update(resultIdentity(catalog));
-  return hash.digest('hex');
-}
-
-function resultIdentity(result: PromiseSettledResult<CapturedPreviewInput | undefined>): string {
-  if (result.status === 'fulfilled') {
-    return result.value === undefined ? 'not-requested' : result.value.identity;
-  }
-  const error = result.reason as unknown;
-  return error instanceof PreviewInputError
-    ? `unavailable:${error.kind}:${error.code}`
-    : 'unavailable';
 }
