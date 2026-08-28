@@ -6,7 +6,10 @@
     "build": "vite build",
     "dev": "vite",
     "lint": "oxlint . && eslint .",
-    "test": "vitest run --passWithNoTests",
+    "test": "pnpm test:unit && pnpm test:browser && pnpm test:e2e",
+    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "test:e2e": "playwright test",
+    "test:unit": "vitest run --config vitest.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
