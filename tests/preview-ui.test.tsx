@@ -154,7 +154,7 @@ describe('preview UI model boundaries', () => {
     expect(previewLocaleLabel('en_us')).toBe('English (US)');
   });
 
-  it('resolves label-first original domain symbols without emoji or raw-ID labels', () => {
+  it('resolves label-first original domain symbols without emoji, letter badges, or raw-ID labels', () => {
     const pickaxe = resolveDomainIcon({
       icon: 'minecraft:diamond_pickaxe',
       label: 'Miner',
@@ -163,15 +163,14 @@ describe('preview UI model boundaries', () => {
     expect(pickaxe).toMatchObject({
       accessibleLabel: 'Miner',
       kind: 'tool',
-      monogram: 'DP',
       namespace: 'minecraft',
       resource: 'diamond_pickaxe',
     });
+    expect(pickaxe).not.toHaveProperty('monogram');
     const log = resolveDomainIcon({ icon: 'minecraft:oak_log' });
     expect(log).toMatchObject({
       accessibleLabel: 'Oak Log',
       kind: 'nature',
-      monogram: 'OL',
       namespace: 'minecraft',
       resource: 'oak_log',
     });

@@ -17,7 +17,6 @@ export interface DomainIconDescriptor {
   accentHue: number;
   hue: number;
   kind: DomainIconKind;
-  monogram: string;
   namespace: string;
   resource: string;
   rotation: number;
@@ -58,7 +57,6 @@ export function resolveDomainIcon(source: IconSource): DomainIconDescriptor {
     accentHue: (seed * 17 + 41) % 360,
     hue: (seed * 29 + 19) % 360,
     kind,
-    monogram: resourceMonogram(resource),
     namespace,
     resource,
     rotation: (seed % 7) - 3,
@@ -72,23 +70,6 @@ function stableHash(value: string): number {
     hash = Math.imul(hash, 16_777_619);
   }
   return hash >>> 0;
-}
-
-function resourceMonogram(value: string): string {
-  const words = value.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
-  const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-  if (words.length > 1) {
-    return words
-      .slice(0, 2)
-      .map((word) => segmenter.segment(word)[Symbol.iterator]().next().value?.segment ?? '')
-      .join('')
-      .toLocaleUpperCase();
-  }
-  return [...segmenter.segment(words[0] ?? 'Q')]
-    .slice(0, 2)
-    .map(({ segment }) => segment)
-    .join('')
-    .toLocaleUpperCase();
 }
 
 function humanizeResource(value: string | undefined): string {

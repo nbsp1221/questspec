@@ -3,9 +3,10 @@
  *
  * The preview imitates the look of the in-game FTB Quests screen: translucent
  * black GUI panels with hard one-pixel edges, bitmap-style text with a black
- * drop shadow, item-slot bevels, and green chevron dependency ribbons drawn
- * over a dim blocky world. Every measurement is a whole pixel and nothing is
- * softened with blur or large radii, because in-game GUI art has none.
+ * drop shadow, item-slot bevels, and green dependency ribbons drawn over a
+ * flat dim backdrop. Every fill is a flat colour, every measurement is a whole
+ * pixel, and nothing is animated, blurred, glowed, or graded, because in-game
+ * GUI art has none of that either.
  */
 
 :root {
@@ -25,6 +26,7 @@
   --mc-dark-red: #a02020;
 
   /* GUI surfaces. */
+  --world: #17191b;
   --panel: rgba(10, 10, 12, 0.88);
   --panel-solid: #0c0c0e;
   --panel-sunken: rgba(0, 0, 0, 0.42);
@@ -73,7 +75,7 @@ body {
 }
 
 body {
-  background: #0c0d0f;
+  background: var(--world);
   color: var(--text);
   font-family: var(--font-pixel);
   font-size: 13px;
@@ -81,25 +83,6 @@ body {
   line-height: 1.45;
   text-shadow: var(--pixel-shadow);
   -webkit-font-smoothing: none;
-}
-
-/* The dim blocky world drawn behind every translucent GUI panel. */
-body::before {
-  background-color: #1a1c1e;
-  background-image:
-    radial-gradient(38% 30% at 12% 18%, rgba(126, 112, 84, 0.5), transparent 70%),
-    radial-gradient(30% 34% at 33% 62%, rgba(70, 88, 96, 0.42), transparent 72%),
-    radial-gradient(46% 38% at 74% 26%, rgba(96, 84, 62, 0.44), transparent 72%),
-    radial-gradient(34% 40% at 88% 74%, rgba(56, 72, 86, 0.4), transparent 74%),
-    radial-gradient(52% 44% at 50% 96%, rgba(40, 44, 38, 0.6), transparent 76%),
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 64px),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 64px),
-    linear-gradient(180deg, #24262a 0%, #191b1e 46%, #0e0f11 100%);
-  box-shadow: inset 0 0 260px 80px rgba(0, 0, 0, 0.78);
-  content: '';
-  inset: 0;
-  position: fixed;
-  z-index: -1;
 }
 
 button,
@@ -608,9 +591,7 @@ code {
 }
 
 .graph-canvas {
-  background:
-    radial-gradient(120% 120% at 50% 40%, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.3)),
-    rgba(6, 7, 8, 0.16);
+  background: rgba(0, 0, 0, 0.24);
   flex: 1;
   min-height: 0;
   outline-offset: -3px;
@@ -707,8 +688,7 @@ code {
 
 .quest-node {
   --frame: #4f9c46;
-  --face-top: rgba(46, 48, 44, 0.92);
-  --face-bottom: rgba(24, 26, 23, 0.92);
+  --face: rgba(34, 36, 32, 0.92);
   --plate: transparent;
   --plate-edge: transparent;
 
@@ -737,7 +717,7 @@ code {
 }
 
 .quest-node__face {
-  background: linear-gradient(180deg, var(--face-top), var(--face-bottom));
+  background: var(--face);
   clip-path: var(--silhouette, none);
   display: grid;
   inset: 2px;
@@ -805,8 +785,7 @@ code {
 
 .quest-node.relation-selected {
   --frame: var(--mc-white);
-  --face-top: #5a5a60;
-  --face-bottom: #33333a;
+  --face: #45454c;
   --plate: rgba(40, 74, 186, 0.6);
   --plate-edge: #90b0ff;
 }
@@ -825,8 +804,7 @@ code {
 }
 
 .quest-node.is-dimmed {
-  filter: grayscale(0.85);
-  opacity: 0.3;
+  opacity: 0.34;
 }
 
 .quest-node__mark {
@@ -856,10 +834,9 @@ code {
 }
 
 .quest-tip {
-  background: rgba(11, 8, 20, 0.95);
-  border: 1px solid #3b2b7a;
+  background: var(--panel-solid);
+  border: 1px solid var(--edge-light);
   bottom: calc(100% + 9px);
-  box-shadow: 0 0 0 1px var(--edge-black);
   display: none;
   gap: 2px;
   left: 50%;
@@ -897,14 +874,9 @@ code {
   width: 74%;
 }
 
-.zoom-overview .resource-icon__stack {
-  display: none;
-}
-
 /* ----------------------------------------------------------- quest edges */
 
 .quest-edge__bed {
-  opacity: 0.85;
   stroke: var(--edge-black);
   stroke-width: 10;
 }
@@ -916,7 +888,6 @@ code {
 
 .quest-edge__flow {
   stroke: var(--edge-flow, #8ff07c);
-  stroke-dasharray: 6 4;
   stroke-width: 4;
 }
 
@@ -947,17 +918,6 @@ code {
 .react-flow__edge.has-diagnostic {
   --edge-flow: var(--mc-red);
   --edge-rail: #5c1616;
-}
-
-.has-selection .react-flow__edge.relation-prerequisite .quest-edge__flow,
-.has-selection .react-flow__edge.relation-dependent .quest-edge__flow {
-  animation: quest-edge-crawl 900ms linear infinite;
-}
-
-@keyframes quest-edge-crawl {
-  to {
-    stroke-dashoffset: -10;
-  }
 }
 
 /* -------------------------------------------------------- resource icons */
@@ -1024,26 +984,6 @@ code {
 
 .sprite-check {
   fill: var(--mc-green);
-}
-
-.resource-icon__stack {
-  bottom: -2px;
-  color: var(--mc-white);
-  display: none;
-  font-size: 9px;
-  line-height: 1;
-  position: absolute;
-  right: -1px;
-  text-shadow: 1px 1px 0 #000000;
-}
-
-/* The sprite monogram only aids reading inside inventory-style slot lists. */
-.item-slot .resource-icon__stack {
-  display: block;
-}
-
-.resource-icon--small .resource-icon__stack {
-  display: none;
 }
 
 /* Item slots reproduce the sunken bevel of an in-game inventory slot. */
@@ -1433,15 +1373,5 @@ code {
 
   .lang-picker select {
     max-width: 108px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
   }
 }

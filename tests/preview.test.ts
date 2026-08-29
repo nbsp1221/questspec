@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -118,5 +119,48 @@ describe('FTB Quests browser preview', () => {
       stat(join(root, 'chapters', 'start.snbt')).then((value) => value.mtimeMs),
     ]);
     expect(after).toEqual(before);
+  });
+});
+
+/*
+ * The preview must read as the in-game quest screen without decorative web
+ * effects, so the authored stylesheet is held to flat fills, hard edges, and no
+ * motion. Vendor React Flow styles are out of scope; only authored rules count.
+ */
+describe('preview stylesheet restraint', () => {
+  const stylesheet = readFileSync(
+    new URL('../src/preview/client/styles.css', import.meta.url),
+    'utf8',
+  );
+
+  it('authors flat fills with no gradient of any kind', () => {
+    expect(stylesheet).not.toMatch(/gradient\(/u);
+  });
+
+  it('authors no animation, blur, glow, or filter treatment', () => {
+    expect(stylesheet).not.toMatch(/@keyframes/u);
+    expect(stylesheet).not.toMatch(/\banimation\b/u);
+    expect(stylesheet).not.toMatch(/\bfilter\s*:/u);
+    expect(stylesheet).not.toMatch(/\bblur\(/u);
+    expect(stylesheet).not.toMatch(/stroke-dasharray/u);
+  });
+
+  it('keeps every authored shadow hard-edged with a zero blur radius', () => {
+    const shadows = stylesheet.matchAll(/(?:box|text)-shadow:\s*([^;]+);/gu);
+    for (const [, value] of shadows) {
+      for (const layer of value.split(/,(?![^(]*\))/u)) {
+        const lengths = layer
+          .replaceAll(/[a-z-]+\([^)]*\)/gu, ' ')
+          .replaceAll(/#[0-9a-f]{3,8}/giu, ' ')
+          .match(/-?\d+(?:\.\d+)?(?:px)?/gu);
+        expect((lengths ?? []).slice(2).every((length) => Number.parseFloat(length) === 0)).toBe(
+          true,
+        );
+      }
+    }
+  });
+
+  it('retains no resource monogram styling', () => {
+    expect(stylesheet).not.toMatch(/resource-icon__stack/u);
   });
 });

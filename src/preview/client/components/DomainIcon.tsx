@@ -151,9 +151,6 @@ export function DomainIcon({
       <svg aria-hidden="true" viewBox="0 0 16 16">
         {artwork[descriptor.kind]}
       </svg>
-      <span aria-hidden="true" className="resource-icon__stack">
-        {descriptor.monogram}
-      </span>
     </span>
   );
 }
