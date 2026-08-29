@@ -24,6 +24,7 @@ import {
   readPhysicalIdMap,
   serializePhysicalIdMap,
 } from './identity/id-map.ts';
+import { startPreviewServer } from './preview/server.ts';
 import { type LoadQuestbookGraphState, loadQuestbook } from './spec/load.ts';
 import { serializeQuestbook } from './spec/serialize.ts';
 import {
@@ -63,6 +64,11 @@ interface AnalyzeOptions extends CommonOptions {
   from?: string;
   maxDepth?: number | string;
   to?: string;
+}
+
+interface ServeOptions {
+  locale?: string;
+  port?: number | string;
 }
 
 interface AnalyzeReachabilityQuery {
@@ -308,6 +314,29 @@ export function createCli(): CAC {
     });
 
   cli
+    .command('serve <directory>', 'Preview an FTB Quests SNBT directory in a local browser')
+    .option('--locale <locale>', 'Initial locale (for example en_us)')
+    .option('--port <port>', 'Loopback port (defaults to an available port)')
+    .action(async (directory: string, options: ServeOptions) => {
+      const port = parseServePort(options.port);
+      if (options.port !== undefined && port === undefined) {
+        throw new Error('questspec serve: --port must be an integer from 0 through 65535');
+      }
+      const preview = await startPreviewServer(directory, {
+        locale: options.locale,
+        port,
+      });
+      console.log(`Quest preview: ${preview.url}`);
+      console.log(`Source: ${preview.preview.directory}`);
+      console.log(
+        `Loaded ${preview.preview.stats.chapters} chapters, ${preview.preview.stats.quests} quests, and ${preview.preview.stats.dependencies} dependency links`,
+      );
+      if (preview.preview.diagnostics.length > 0) {
+        console.log(`Preview diagnostics: ${preview.preview.diagnostics.length} (view in browser)`);
+      }
+    });
+
+  cli
     .command('[...args]', 'Compile and validate declarative Minecraft questbooks')
     .action((args: string[]) => {
       if (args.length > 0) {
@@ -405,6 +434,20 @@ function printAnalyzeOptionFailure(
     );
   }
   process.exitCode = 1;
+}
+
+function parseServePort(value: number | string | undefined): number | undefined {
+  if (value === undefined) {
+    return 0;
+  }
+  if (typeof value === 'number') {
+    return Number.isInteger(value) && value >= 0 && value <= 65_535 ? value : undefined;
+  }
+  if (!/^\d+$/u.test(value)) {
+    return undefined;
+  }
+  const port = Number(value);
+  return Number.isInteger(port) && port <= 65_535 ? port : undefined;
 }
 
 function normalizeDirection(value: string | undefined): QuestGraphDirection {

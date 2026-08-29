@@ -97,6 +97,7 @@ questspec compile <source> --output <directory> [--id-map <file>] [--resources <
 questspec import <directory> --output <source> [--id-map <file>] [--force] [--json]
 questspec diff <source> <directory> [--id-map <file>] [--json]
 questspec analyze <source> [--from <quest>] [--to <quest>] [--direction <dependents|dependencies>] [--max-depth <integer>] [--json]
+questspec serve <quest-directory> [--locale <locale>] [--port <port>]
 ```
 
 `validate` checks YAML syntax, the public schema, identities, dependency cycles and references, localization, the exact target profile, and optionally resources.
@@ -108,6 +109,8 @@ questspec analyze <source> [--from <quest>] [--to <quest>] [--direction <depende
 `diff` compiles the source, imports both sides through the target adapter, and compares semantic content rather than whitespace or omitted runtime defaults.
 
 `analyze` reports the structural quest dependency graph. A dependency declaration is represented as a directed edge from prerequisite to dependent, so `--direction dependents` answers which quests can structurally follow a quest and `--direction dependencies` answers which quests structurally precede it. `--from` alone reports reflexive reachability with minimum edge distances; adding `--to` reports one deterministic shortest structural path. `--max-depth` is an inclusive edge bound for reachability.
+
+`serve` reads an FTB Quests persistence directory directly and starts a read-only preview on `127.0.0.1`. The browser keeps chapter grouping, available localization, authored quest positions and shapes, dependencies, and task/reward context visible without requiring QuestSpec YAML or launching Minecraft. Use `--locale` to choose the initial language and `--port` when a stable loopback port is useful.
 
 This is structural analysis, not a simulation of FTB Quests runtime unlocks or player progression. Reachability does not claim that a quest is startable or unlockable: dependency requirements, thresholds, optional state, branch exclusions, tasks, rewards, team state, and other runtime effects are outside this graph contract. Cycles and missing dependency endpoints still produce a report so the valid structural portion can be inspected, but the command exits with status 1.
 
