@@ -1,10 +1,9 @@
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Script } from 'node:vm';
 import { describe, expect, it } from 'vitest';
 import { readSnbtDirectory } from '../src/filesystem/read-directory.ts';
-import { buildQuestPreview } from '../src/preview/model.ts';
+import { type QuestPreview, buildQuestPreview } from '../src/preview/model.ts';
 import { startPreviewServer } from '../src/preview/server.ts';
 
 async function fixture(): Promise<string> {
@@ -79,15 +78,38 @@ describe('FTB Quests browser preview', () => {
       const response = await fetch(preview.url);
       const html = await response.text();
       expect(response.status).toBe(200);
+      expect(response.headers.get('cache-control')).toBe('no-store');
+      expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
       expect(response.headers.get('content-security-policy')).toContain("default-src 'none'");
+      expect(response.headers.get('content-security-policy')).toContain("script-src 'self'");
+      expect(response.headers.get('content-security-policy')).not.toContain("'unsafe-inline'");
+      expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+      expect(response.headers.get('x-content-type-options')).toBe('nosniff');
       expect(html).toContain('QuestSpec Preview');
-      expect(html).toContain('Punch a Tree');
-      expect(html).toContain('Quest dependency graph');
-      const script = html.split('<script>')[1]?.split('</script>')[0];
-      expect(script).toBeDefined();
-      expect(() => new Script(script)).not.toThrow();
+      expect(html).toContain('href="/assets/app.css"');
+      expect(html).toContain('src="/assets/app.js"');
+
+      const previewResponse = await fetch(new URL('/preview.json', preview.url));
+      expect(previewResponse.headers.get('content-type')).toBe('application/json; charset=utf-8');
+      const previewData = (await previewResponse.json()) as QuestPreview;
+      expect(previewData.locales.en_us?.chapters[0]?.quests[0]?.title).toBe('Punch a Tree');
+      const javascript = await fetch(new URL('/assets/app.js', preview.url));
+      const stylesheet = await fetch(new URL('/assets/app.css', preview.url));
+      expect(javascript.status).toBe(200);
+      expect(javascript.headers.get('content-type')).toBe('text/javascript; charset=utf-8');
+      expect((await javascript.text()).length).toBeGreaterThan(10_000);
+      expect(stylesheet.status).toBe(200);
+      expect(stylesheet.headers.get('content-type')).toBe('text/css; charset=utf-8');
+      expect(await stylesheet.text()).toContain('--graphite-950');
+
+      const head = await fetch(preview.url, { method: 'HEAD' });
+      expect(head.status).toBe(200);
+      expect(await head.text()).toBe('');
       expect((await fetch(new URL('/health', preview.url))).status).toBe(200);
       expect((await fetch(new URL('/missing', preview.url))).status).toBe(404);
+      const rejected = await fetch(preview.url, { method: 'POST' });
+      expect(rejected.status).toBe(405);
+      expect(rejected.headers.get('allow')).toBe('GET, HEAD');
     } finally {
       await preview.close();
     }

@@ -4,7 +4,7 @@ import { globalIgnores } from 'eslint/config';
 
 export default retn0(
   {
-    environments: ['node'],
+    environments: ['node', 'browser'],
     perfectionist: true,
   },
   eslintConfigOxlint,

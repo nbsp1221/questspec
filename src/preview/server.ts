@@ -1,6 +1,7 @@
-import { realpath, stat } from 'node:fs/promises';
+import { readFile, realpath, stat } from 'node:fs/promises';
 import { type Server, createServer } from 'node:http';
-import { resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { readSnbtDirectory } from '../filesystem/read-directory.ts';
 import { type QuestPreview, buildQuestPreview } from './model.ts';
 import { renderPreviewPage } from './page.ts';
@@ -17,6 +18,11 @@ export interface PreviewServer {
   url: string;
 }
 
+interface PreviewAsset {
+  body: Buffer;
+  contentType: string;
+}
+
 export async function startPreviewServer(
   directory: string,
   options: PreviewServerOptions = {},
@@ -31,12 +37,21 @@ export async function startPreviewServer(
   if (preview.stats.chapters === 0) {
     throw new Error(`questspec serve: no readable FTB Quests chapters found in ${root}`);
   }
+  const [javascript, stylesheet] = await Promise.all([
+    loadPreviewAsset('app.js', 'text/javascript; charset=utf-8'),
+    loadPreviewAsset('app.css', 'text/css; charset=utf-8'),
+  ]);
   const page = renderPreviewPage(preview);
+  const previewJson = Buffer.from(JSON.stringify(preview));
+  const assets = new Map<string, PreviewAsset>([
+    ['/assets/app.css', stylesheet],
+    ['/assets/app.js', javascript],
+  ]);
   const server = createServer((request, response) => {
     const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
     response.setHeader(
       'Content-Security-Policy',
-      "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; frame-ancestors 'none'",
+      "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src data:; base-uri 'none'; frame-ancestors 'none'",
     );
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Referrer-Policy', 'no-referrer');
@@ -50,6 +65,23 @@ export async function startPreviewServer(
         'Content-Type': 'text/html; charset=utf-8',
       });
       response.end(request.method === 'HEAD' ? undefined : page);
+      return;
+    }
+    if (path === '/preview.json') {
+      response.writeHead(200, {
+        'Cache-Control': 'no-store',
+        'Content-Type': 'application/json; charset=utf-8',
+      });
+      response.end(request.method === 'HEAD' ? undefined : previewJson);
+      return;
+    }
+    const asset = assets.get(path);
+    if (asset !== undefined) {
+      response.writeHead(200, {
+        'Cache-Control': 'no-store',
+        'Content-Type': asset.contentType,
+      });
+      response.end(request.method === 'HEAD' ? undefined : asset.body);
       return;
     }
     if (path === '/health') {
@@ -78,6 +110,27 @@ export async function startPreviewServer(
     server,
     url: `http://127.0.0.1:${address.port}/`,
   };
+}
+
+async function loadPreviewAsset(filename: string, contentType: string): Promise<PreviewAsset> {
+  const directory = previewAssetDirectory();
+  try {
+    return { body: await readFile(join(directory, filename)), contentType };
+  } catch (error) {
+    throw new Error(
+      `questspec serve: browser asset ${filename} is missing; run the QuestSpec build before serving`,
+      { cause: error },
+    );
+  }
+}
+
+function previewAssetDirectory(): string {
+  const moduleDirectory = dirname(fileURLToPath(import.meta.url));
+  const runningFromSource =
+    basename(moduleDirectory) === 'preview' && basename(dirname(moduleDirectory)) === 'src';
+  return runningFromSource
+    ? resolve(moduleDirectory, '../../dist/preview')
+    : join(moduleDirectory, 'preview');
 }
 
 function closeServer(server: Server): Promise<void> {
