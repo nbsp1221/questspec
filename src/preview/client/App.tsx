@@ -116,6 +116,7 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
           ) : (
             <QuestGraph
               chapter={chapter}
+              diagnostics={preview.diagnostics}
               key={`${localeKey}:${chapter.id}`}
               memoryKey={previewViewportKey(localeKey, chapter.id)}
               onSelect={selectQuest}

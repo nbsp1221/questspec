@@ -8,6 +8,10 @@ import { PreviewHeader } from '../src/preview/client/components/PreviewHeader.ts
 import { GRAPH_INTERACTION_PROPS } from '../src/preview/client/components/QuestGraph.tsx';
 import { QuestInspector } from '../src/preview/client/components/QuestInspector.tsx';
 import {
+  type QuestNodeData,
+  QuestTokenButton,
+} from '../src/preview/client/components/QuestNode.tsx';
+import {
   authoredPosition,
   clippedEdgeEndpoints,
   previewViewportKey,
@@ -82,6 +86,8 @@ describe('preview UI model boundaries', () => {
     expect(questNodeSize(4)).toBe(96);
     expect(shapeClass('rsquare')).toBe('rounded');
     expect(shapeClass('diamond')).toBe('diamond');
+    expect(shapeClass('gear')).toBe('faceted');
+    expect(shapeClass('none')).toBe('frameless');
     expect(Object.fromEntries(questRelations([firstQuest, secondQuest], 'Q2'))).toEqual({
       Q1: 'prerequisite',
       Q2: 'selected',
@@ -104,16 +110,7 @@ describe('preview UI model boundaries', () => {
   });
 
   it('clips straight edges from measured centers to every supported node silhouette', () => {
-    const shapes = [
-      'circle',
-      'diamond',
-      'gear',
-      'hexagon',
-      'octagon',
-      'pentagon',
-      'rounded',
-      'square',
-    ] as const;
+    const shapes = ['circle', 'diamond', 'faceted', 'frameless', 'rounded', 'square'] as const;
     for (const shape of shapes) {
       const endpoints = clippedEdgeEndpoints(
         { x: 0, y: 0 },
@@ -158,20 +155,67 @@ describe('preview UI model boundaries', () => {
   });
 
   it('resolves label-first original domain symbols without emoji or raw-ID labels', () => {
-    expect(
-      resolveDomainIcon({ icon: 'minecraft:diamond_pickaxe', label: 'Miner', type: 'item' }),
-    ).toEqual({
+    const pickaxe = resolveDomainIcon({
+      icon: 'minecraft:diamond_pickaxe',
+      label: 'Miner',
+      type: 'item',
+    });
+    expect(pickaxe).toMatchObject({
       accessibleLabel: 'Miner',
       kind: 'tool',
+      monogram: 'DP',
+      namespace: 'minecraft',
+      resource: 'diamond_pickaxe',
     });
-    expect(resolveDomainIcon({ icon: 'minecraft:oak_log' })).toEqual({
+    const log = resolveDomainIcon({ icon: 'minecraft:oak_log' });
+    expect(log).toMatchObject({
       accessibleLabel: 'Oak Log',
       kind: 'nature',
+      monogram: 'OL',
+      namespace: 'minecraft',
+      resource: 'oak_log',
     });
+    expect(log.hue).not.toBe(pickaxe.hue);
   });
 });
 
 describe('preview components', () => {
+  it('activates a quest exactly once for pointer and keyboard button clicks', () => {
+    const activate = vi.fn();
+    const data: QuestNodeData = {
+      diagnostic: false,
+      dimmed: false,
+      focused: true,
+      onActivate: activate,
+      onBlur: vi.fn(),
+      onFocus: vi.fn(),
+      onHover: vi.fn(),
+      onNavigate: vi.fn(),
+      quest: firstQuest,
+      relation: 'neutral',
+      selected: false,
+    };
+    render(<QuestTokenButton data={data} />);
+    const button = screen.getByRole('button', { name: 'Punch a Tree' });
+
+    fireEvent.pointerDown(button, { button: 0 });
+    fireEvent.pointerUp(button, { button: 0 });
+    fireEvent.click(button, { button: 0 });
+    expect(activate).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(button, { key: 'Enter' });
+    button.click();
+    expect(activate).toHaveBeenCalledTimes(2);
+
+    fireEvent.keyDown(button, { key: ' ' });
+    fireEvent.keyUp(button, { key: ' ' });
+    button.click();
+    expect(activate).toHaveBeenCalledTimes(3);
+    expect(activate).toHaveBeenNthCalledWith(1, firstQuest.id);
+    expect(activate).toHaveBeenNthCalledWith(2, firstQuest.id);
+    expect(activate).toHaveBeenNthCalledWith(3, firstQuest.id);
+  });
+
   it('filters grouped chapters and exposes the current chapter state', () => {
     const select = vi.fn();
     render(<ChapterNavigation locale={locale} onSelect={select} selectedChapterId="A" />);

@@ -9,15 +9,7 @@ export interface GraphPoint {
 
 export type QuestRelation = 'dependent' | 'neutral' | 'prerequisite' | 'selected';
 
-export type QuestShape =
-  | 'circle'
-  | 'diamond'
-  | 'gear'
-  | 'hexagon'
-  | 'octagon'
-  | 'pentagon'
-  | 'rounded'
-  | 'square';
+export type QuestShape = 'circle' | 'diamond' | 'faceted' | 'frameless' | 'rounded' | 'square';
 
 export function authoredPosition(quest: Pick<PreviewQuest, 'x' | 'y'>): GraphPoint {
   return { x: quest.x * AUTHORED_GRID_SIZE, y: quest.y * AUTHORED_GRID_SIZE };
@@ -50,20 +42,19 @@ export function questRelations(
 
 export function shapeClass(shape: string): QuestShape {
   const normalized = shape.toLowerCase();
-  if (normalized.includes('diamond')) {
+  if (normalized === 'none' || normalized.includes('frameless')) {
+    return 'frameless';
+  }
+  if (normalized.includes('diamond') || normalized.includes('heart')) {
     return 'diamond';
   }
-  if (normalized.includes('hexagon')) {
-    return 'hexagon';
-  }
-  if (normalized.includes('octagon')) {
-    return 'octagon';
-  }
-  if (normalized.includes('pentagon')) {
-    return 'pentagon';
-  }
-  if (normalized.includes('gear')) {
-    return 'gear';
+  if (
+    normalized.includes('hexagon') ||
+    normalized.includes('octagon') ||
+    normalized.includes('pentagon') ||
+    normalized.includes('gear')
+  ) {
+    return 'faceted';
   }
   if (normalized.includes('square')) {
     return normalized.startsWith('r') ? 'rounded' : 'square';
@@ -100,7 +91,7 @@ function clipFromCenter(
 ): GraphPoint {
   const direction = { x: toward.x - center.x, y: toward.y - center.y };
   const half = size / 2;
-  if (shape === 'circle') {
+  if (shape === 'circle' || shape === 'frameless') {
     const length = Math.hypot(direction.x, direction.y);
     return {
       x: center.x + (direction.x / length) * half,
@@ -138,7 +129,9 @@ function cross(left: GraphPoint, right: GraphPoint): number {
   return left.x * right.y - left.y * right.x;
 }
 
-function polygonFor(shape: Exclude<QuestShape, 'circle'>): readonly (readonly [number, number])[] {
+function polygonFor(
+  shape: Exclude<QuestShape, 'circle' | 'frameless'>,
+): readonly (readonly [number, number])[] {
   switch (shape) {
     case 'diamond':
       return [
@@ -147,60 +140,15 @@ function polygonFor(shape: Exclude<QuestShape, 'circle'>): readonly (readonly [n
         [0, 1],
         [-1, 0],
       ];
-    case 'hexagon':
+    case 'faceted':
       return [
-        [-0.5, -0.92],
-        [0.5, -0.92],
-        [1, 0],
-        [0.5, 0.92],
-        [-0.5, 0.92],
-        [-1, 0],
-      ];
-    case 'octagon':
-      return [
-        [-0.4, -1],
-        [0.4, -1],
-        [1, -0.4],
-        [1, 0.4],
-        [0.4, 1],
-        [-0.4, 1],
-        [-1, 0.4],
-        [-1, -0.4],
-      ];
-    case 'pentagon':
-      return [
-        [0, -1],
-        [0.96, -0.28],
-        [0.6, 1],
-        [-0.6, 1],
-        [-0.96, -0.28],
-      ];
-    case 'gear':
-      return [
-        [-0.24, -1],
-        [0.24, -1],
-        [0.34, -0.76],
-        [0.6, -0.84],
-        [0.84, -0.6],
-        [0.76, -0.34],
-        [1, -0.24],
-        [1, 0.24],
-        [0.76, 0.34],
-        [0.84, 0.6],
-        [0.6, 0.84],
-        [0.34, 0.76],
-        [0.24, 1],
-        [-0.24, 1],
-        [-0.34, 0.76],
-        [-0.6, 0.84],
-        [-0.84, 0.6],
-        [-0.76, 0.34],
-        [-1, 0.24],
+        [-0.38, -1],
+        [0.52, -0.86],
+        [1, -0.18],
+        [0.74, 0.78],
+        [0, 1],
+        [-0.82, 0.7],
         [-1, -0.24],
-        [-0.76, -0.34],
-        [-0.84, -0.6],
-        [-0.6, -0.84],
-        [-0.34, -0.76],
       ];
     case 'rounded':
     case 'square':

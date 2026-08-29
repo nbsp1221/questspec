@@ -13,6 +13,7 @@ export type QuestFlowEdge = Edge<QuestEdgeData, 'quest'>;
 
 export function QuestEdge({
   data,
+  id,
   sourceX,
   sourceY,
   targetX,
@@ -30,21 +31,52 @@ export function QuestEdge({
           data.targetSize,
         );
   const path = `M ${endpoints.source.x},${endpoints.source.y} L ${endpoints.target.x},${endpoints.target.y}`;
+  const markerId = `quest-edge-arrow-${stableHash(id)}`;
 
   return (
     <>
+      <defs>
+        <marker
+          className="quest-edge__arrow"
+          id={markerId}
+          markerHeight="10"
+          markerUnits="userSpaceOnUse"
+          markerWidth="10"
+          orient="auto"
+          refX="8"
+          refY="5"
+          viewBox="0 0 10 10"
+        >
+          <path d="M1 1 8 5 1 9" fill="none" />
+        </marker>
+      </defs>
       <path
-        className="react-flow__edge-path quest-edge__halo"
+        className="react-flow__edge-path quest-edge__bed"
         d={path}
         fill="none"
         vectorEffect="non-scaling-stroke"
       />
       <path
-        className="react-flow__edge-path quest-edge__core"
+        className="react-flow__edge-path quest-edge__rail"
+        d={path}
+        fill="none"
+        markerEnd={`url(#${markerId})`}
+        vectorEffect="non-scaling-stroke"
+      />
+      <path
+        className="react-flow__edge-path quest-edge__flow"
         d={path}
         fill="none"
         vectorEffect="non-scaling-stroke"
       />
     </>
   );
+}
+
+function stableHash(value: string): string {
+  let hash = 0;
+  for (const character of value) {
+    hash = Math.imul(hash, 31) + (character.codePointAt(0) ?? 0);
+  }
+  return (hash >>> 0).toString(36);
 }

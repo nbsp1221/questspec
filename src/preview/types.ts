@@ -1,6 +1,7 @@
 export interface PreviewDiagnostic {
   file?: string;
   message: string;
+  questId?: string;
   severity: 'error' | 'warning';
 }
 

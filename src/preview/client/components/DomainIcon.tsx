@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { resolveDomainIcon } from '../icon-resolver.ts';
 
 interface DomainIconProps {
@@ -8,72 +9,99 @@ interface DomainIconProps {
   type?: string;
 }
 
-const paths: Record<string, React.ReactNode> = {
+interface ResourceIconStyle extends CSSProperties {
+  '--icon-accent-hue': number;
+  '--icon-hue': number;
+  '--icon-rotation': string;
+}
+
+const artwork: Record<string, React.ReactNode> = {
   combat: (
     <>
-      <path d="M6 19 18 7M8 5l11 11M5 16l3 3M15 5l4 4" />
-      <path d="m5 5 4 1-3 3Z" />
+      <path className="resource-icon__body" d="m5 18 2 1 11-11-3-3L5 16Z" />
+      <path className="resource-icon__detail" d="m13 5 2-2 6 6-2 2ZM4 15l5 5-2 2-5-5Z" />
     </>
   ),
-  complete: <path d="m5 12 4 4L19 7" />,
+  complete: (
+    <>
+      <path className="resource-icon__body" d="m12 2 8 3v6c0 5-3.4 8.8-8 11-4.6-2.2-8-6-8-11V5Z" />
+      <path className="resource-icon__cut" d="m7.4 11.7 2.9 2.8 6.2-6.3" />
+    </>
+  ),
   experience: (
     <>
-      <path d="m12 4 2.1 4.7L19 10l-3.7 3.4.9 5.1L12 16l-4.2 2.5.9-5.1L5 10l4.9-1.3Z" />
+      <path className="resource-icon__body" d="m12 2 7 6-2.5 10L12 22l-4.5-4L5 8Z" />
+      <path className="resource-icon__shine" d="m12 5 3.5 3-1.2 5.2-2.3 2-2.3-2L8.5 8Z" />
     </>
   ),
   food: (
     <>
-      <path d="M8 19c-3-4-2-10 3-12 4-2 8 1 7 5-1 5-6 8-10 7Z" />
-      <path d="M10 7c0-2 1-3 3-4" />
+      <path
+        className="resource-icon__body"
+        d="M12 7c4-4 9 0 8 5-1 6-6 9-8 9s-7-3-8-9c-1-5 4-9 8-5Z"
+      />
+      <path className="resource-icon__detail" d="M12 7c0-3 2-5 5-5-1 3-2 5-5 5Z" />
+      <path className="resource-icon__shine" d="M7 11c1-2 2-3 4-3" />
     </>
   ),
   knowledge: (
     <>
-      <path d="M4 5h6c2 0 2 2 2 2v12s0-2-2-2H4Z" />
-      <path d="M20 5h-6c-2 0-2 2-2 2v12s0-2 2-2h6Z" />
+      <path
+        className="resource-icon__body"
+        d="M3 4h7c1.2 0 2 .8 2 2v15c0-1.5-1.2-3-3-3H3Zm18 0h-7c-1.2 0-2 .8-2 2v15c0-1.5 1.2-3 3-3h6Z"
+      />
+      <path className="resource-icon__detail" d="M6 8h3M6 11h3M15 8h3M15 11h3" />
     </>
   ),
   magic: (
     <>
-      <path d="m5 19 10-10" />
-      <path d="m14 5 .7 2.3L17 8l-2.3.7L14 11l-.7-2.3L11 8l2.3-.7Z" />
-      <path d="m18 13 .5 1.5L20 15l-1.5.5L18 17l-.5-1.5L16 15l1.5-.5Z" />
+      <path
+        className="resource-icon__body"
+        d="M9 3h6v4l4 8c1.7 3.5-.2 6-3.5 6h-7C5.2 21 3.3 18.5 5 15l4-8Z"
+      />
+      <path className="resource-icon__detail" d="M8 14h8l2 4H6Z" />
+      <path className="resource-icon__shine" d="M10 4h4M9 11h6" />
     </>
   ),
   material: (
     <>
-      <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9Z" />
-      <path d="m4 7.5 8 4.5 8-4.5M12 12v9" />
+      <path className="resource-icon__body" d="m5 8 4-4h9l2 5-5 10H5L3 14Z" />
+      <path className="resource-icon__detail" d="m5 8 5 3h9M10 11l-2 8" />
+      <path className="resource-icon__shine" d="m9 6 7-1" />
     </>
   ),
   nature: (
     <>
-      <path d="M12 20v-9" />
-      <path d="M12 13C6 13 5 8 6 5c4 0 7 2 6 8ZM12 16c5 0 7-3 7-6-4 0-7 2-7 6Z" />
+      <path className="resource-icon__body" d="M4 6h13l3 4v9H7l-3-4Z" />
+      <path className="resource-icon__detail" d="M7 6v13M17 6l-3 4v9M7 10h13M10 13h2m3 3h2" />
+      <path className="resource-icon__shine" d="M6 7h9" />
     </>
   ),
   place: (
     <>
-      <path d="M12 21s7-6 7-12a7 7 0 1 0-14 0c0 6 7 12 7 12Z" />
-      <path d="M12 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+      <path className="resource-icon__body" d="M3 19 8 9l4 5 3-4 6 9Z" />
+      <path className="resource-icon__detail" d="m6 15 2-2 2 2 2-1 3 3 2-3 2 3" />
+      <path className="resource-icon__shine" d="M4 19h17" />
     </>
   ),
   quest: (
     <>
-      <path d="M5 5h14v14H5Z" />
-      <path d="M8 9h8M8 13h5" />
+      <path className="resource-icon__body" d="m4 7 8-4 8 4v10l-8 4-8-4Z" />
+      <path className="resource-icon__detail" d="m4 7 8 4 8-4M12 11v10" />
+      <path className="resource-icon__shine" d="m8 5 8 4" />
     </>
   ),
   tool: (
     <>
-      <path d="m5 19 8-8" />
-      <path d="M14 4a5 5 0 0 0-1 6l-3 3a5 5 0 0 1-6-1l4-2 2-4Z" />
-      <path d="m15 15 4 4" />
+      <path className="resource-icon__body" d="m4 3 8 4-2 3-3-1-3 12-3-1L4 8 2 6Z" />
+      <path className="resource-icon__detail" d="m10 7 9-3 3 3-11 4Z" />
+      <path className="resource-icon__shine" d="m6 9-3 10" />
     </>
   ),
   transport: (
     <>
-      <path d="M6 18h12M8 18l2-12h4l2 12M9 10h6M8 14h8" />
+      <path className="resource-icon__body" d="M7 3h10l2 15H5Z" />
+      <path className="resource-icon__detail" d="M8 3 6 21m10-18 2 18M6 8h12M6 13h12M5 18h14" />
     </>
   ),
 };
@@ -86,23 +114,25 @@ export function DomainIcon({
   type,
 }: DomainIconProps): React.JSX.Element {
   const descriptor = resolveDomainIcon({ icon, label, type });
+  const style: ResourceIconStyle = {
+    '--icon-accent-hue': descriptor.accentHue,
+    '--icon-hue': descriptor.hue,
+    '--icon-rotation': `${descriptor.rotation}deg`,
+  };
   return (
     <span
       aria-hidden={decorative || undefined}
       aria-label={decorative ? undefined : descriptor.accessibleLabel}
-      className={`domain-icon domain-icon--${descriptor.kind} domain-icon--${size}`}
+      className={`resource-icon resource-icon--${descriptor.kind} resource-icon--${size}`}
+      data-resource={`${descriptor.namespace}:${descriptor.resource}`}
       role={decorative ? undefined : 'img'}
+      style={style}
     >
-      <svg
-        aria-hidden="true"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.7"
-        viewBox="0 0 24 24"
-      >
-        {paths[descriptor.kind]}
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <g className="resource-icon__art">{artwork[descriptor.kind]}</g>
+        <text className="resource-icon__monogram" x="18.8" y="20.2">
+          {descriptor.monogram}
+        </text>
       </svg>
     </span>
   );

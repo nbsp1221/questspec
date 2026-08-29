@@ -1,7 +1,5 @@
 import type { CSSProperties, KeyboardEvent } from 'react';
 import {
-  Background,
-  BackgroundVariant,
   type EdgeTypes,
   type NodeTypes,
   ReactFlow,
@@ -12,13 +10,14 @@ import {
 import { LocateFixed, Search, ZoomIn, ZoomOut } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from 'react-aria-components';
-import type { PreviewChapter } from '../../types.ts';
+import type { PreviewChapter, PreviewDiagnostic } from '../../types.ts';
 import { authoredPosition, questNodeSize, questRelations, shapeClass } from '../geometry.ts';
 import { QuestEdge, type QuestFlowEdge } from './QuestEdge.tsx';
 import { type QuestFlowNode, QuestNode } from './QuestNode.tsx';
 
 interface QuestGraphProps {
   chapter: PreviewChapter;
+  diagnostics: readonly PreviewDiagnostic[];
   memoryKey: string;
   onSelect: (questId: string | undefined) => void;
   selectedQuestId: string | undefined;
@@ -49,6 +48,7 @@ export function QuestGraph(props: QuestGraphProps): React.JSX.Element {
 
 function QuestGraphInner({
   chapter,
+  diagnostics,
   memoryKey,
   onSelect,
   selectedQuestId,
@@ -58,9 +58,16 @@ function QuestGraphInner({
   const [query, setQuery] = useState('');
   const [zoom, setZoom] = useState(1);
   const [focusedId, setFocusedId] = useState(selectedQuestId ?? chapter.quests[0]?.id);
+  const [focusPathId, setFocusPathId] = useState<string>();
+  const [hoveredId, setHoveredId] = useState<string>();
+  const activeQuestId = selectedQuestId ?? hoveredId ?? focusPathId;
   const relations = useMemo(
     () => questRelations(chapter.quests, selectedQuestId),
     [chapter.quests, selectedQuestId],
+  );
+  const diagnosticIds = useMemo(
+    () => new Set(diagnostics.flatMap((diagnostic) => diagnostic.questId ?? [])),
+    [diagnostics],
   );
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const questById = useMemo(
@@ -89,6 +96,8 @@ function QuestGraphInner({
     setFocusedId((current) =>
       chapter.quests.some((quest) => quest.id === current) ? current : chapter.quests[0]?.id,
     );
+    setFocusPathId(undefined);
+    setHoveredId(undefined);
   }, [chapter]);
 
   const navigate = useCallback(
@@ -116,6 +125,7 @@ function QuestGraphInner({
         return;
       }
       setFocusedId(candidate.id);
+      setFocusPathId(candidate.id);
       requestAnimationFrame(() => {
         const button = [...document.querySelectorAll<HTMLButtonElement>('[data-quest-id]')].find(
           (element) => element.dataset.questId === candidate.id,
@@ -137,10 +147,17 @@ function QuestGraphInner({
         } as CSSProperties;
         return {
           data: {
+            diagnostic: diagnosticIds.has(quest.id),
             dimmed: normalizedQuery !== '' && !matchingQuestIds.has(quest.id),
             focused: quest.id === focusedId,
             onActivate: onSelect,
-            onFocus: setFocusedId,
+            onBlur: (id: string) =>
+              setFocusPathId((current) => (current === id ? undefined : current)),
+            onFocus: (id: string) => {
+              setFocusedId(id);
+              setFocusPathId(id);
+            },
+            onHover: setHoveredId,
             onNavigate: navigate,
             quest,
             relation: relations.get(quest.id) ?? 'neutral',
@@ -155,6 +172,7 @@ function QuestGraphInner({
       }),
     [
       chapter.quests,
+      diagnosticIds,
       focusedId,
       matchingQuestIds,
       navigate,
@@ -179,14 +197,15 @@ function QuestGraphInner({
                 }
                 return {
                   ariaLabel: `${source.title} is a prerequisite of ${quest.title}`,
-                  className:
-                    selectedQuestId === undefined
+                  className: `${
+                    activeQuestId === undefined
                       ? 'relation-neutral'
-                      : quest.id === selectedQuestId
+                      : quest.id === activeQuestId
                         ? 'relation-prerequisite'
-                        : dependency === selectedQuestId
+                        : dependency === activeQuestId
                           ? 'relation-dependent'
-                          : 'relation-muted',
+                          : 'relation-muted'
+                  }${diagnosticIds.has(dependency) || diagnosticIds.has(quest.id) ? ' has-diagnostic' : ''}`,
                   data: {
                     sourceShape: shapeClass(source.shape),
                     sourceSize: questNodeSize(source.size),
@@ -202,7 +221,7 @@ function QuestGraphInner({
                 };
               }),
       ),
-    [chapter.quests, questById, selectedQuestId],
+    [activeQuestId, chapter.quests, diagnosticIds, questById],
   );
 
   const bounds = useMemo(() => authoredBounds(chapter), [chapter]);
@@ -316,22 +335,7 @@ function QuestGraphInner({
           onMoveEnd={(_event, viewport) => viewportMemory.set(memoryKey, viewport)}
           onPaneClick={() => onSelect(undefined)}
           proOptions={{ hideAttribution: false }}
-        >
-          <Background
-            color="var(--grid-minor)"
-            gap={28}
-            id="minor-grid"
-            size={1}
-            variant={BackgroundVariant.Dots}
-          />
-          <Background
-            color="var(--grid-major)"
-            gap={140}
-            id="major-grid"
-            lineWidth={1}
-            variant={BackgroundVariant.Lines}
-          />
-        </ReactFlow>
+        ></ReactFlow>
         <div aria-label="Graph view controls" className="graph-controls" role="group">
           <Button aria-label="Zoom in" className="chrome-button" onPress={() => changeZoom(1.22)}>
             <ZoomIn aria-hidden="true" size={18} />

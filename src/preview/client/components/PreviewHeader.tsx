@@ -42,7 +42,7 @@ export function PreviewHeader({
         </span>
         <span className="brand-copy">
           <strong>QuestSpec</strong>
-          <small>Fieldbook preview</small>
+          <small>Quest book preview</small>
         </span>
       </div>
       <div className="source-copy">

@@ -112,6 +112,7 @@ export function buildQuestPreview(
           diagnostics.push({
             file: chapter.filename,
             message: `${quest.title} references missing dependency ${dependency}.`,
+            questId: quest.id,
             severity: 'warning',
           });
         }
