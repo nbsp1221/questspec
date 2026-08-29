@@ -32,16 +32,13 @@ export function ChapterNavigation({
   );
 
   return (
-    <div className="chapter-navigation">
-      <div className="navigation-heading">
-        <div>
-          <span className="eyebrow">Quest book</span>
-          <h1>Chapters</h1>
-        </div>
-        <span className="count-mark">{locale.chapters.length}</span>
+    <div className="chapter-panel">
+      <div className="panel-bar">
+        <h1 className="panel-bar__title">Chapters</h1>
+        <span className="panel-bar__count">{locale.chapters.length}</span>
       </div>
-      <label className="search-field">
-        <Search aria-hidden="true" size={16} />
+      <label className="pixel-field">
+        <Search aria-hidden="true" size={13} />
         <span className="sr-only">Search chapters</span>
         <input
           onChange={(event) => setQuery(event.target.value)}
@@ -50,7 +47,7 @@ export function ChapterNavigation({
           value={query}
         />
       </label>
-      <nav aria-label="Quest chapters" className="chapter-groups">
+      <nav aria-label="Quest chapters" className="chapter-tree">
         {locale.groups.map((group) => {
           const chapters = locale.chapters.filter(
             (chapter) =>
@@ -61,35 +58,39 @@ export function ChapterNavigation({
           }
           return (
             <section className="chapter-group" key={group.id}>
-              <h2>{group.title}</h2>
-              <div className="chapter-list">
+              <h2 className="chapter-group__title">
+                <span aria-hidden="true" className="chapter-group__arrow">
+                  ▼
+                </span>
+                {group.title}
+              </h2>
+              <ul className="chapter-list">
                 {chapters.map((chapter) => (
-                  <button
-                    aria-current={chapter.id === selectedChapterId ? 'page' : undefined}
-                    className="chapter-entry"
-                    key={chapter.id}
-                    onClick={() => onSelect(chapter)}
-                    type="button"
-                  >
-                    <DomainIcon
-                      decorative
-                      icon={chapter.icon}
-                      label={chapter.title}
-                      size="small"
-                      type="chapter"
-                    />
-                    <span>
-                      <strong>{chapter.title}</strong>
-                      <small>{chapter.quests.length} quests</small>
-                    </span>
-                  </button>
+                  <li key={chapter.id}>
+                    <button
+                      aria-current={chapter.id === selectedChapterId ? 'page' : undefined}
+                      className="chapter-row"
+                      onClick={() => onSelect(chapter)}
+                      type="button"
+                    >
+                      <DomainIcon
+                        decorative
+                        icon={chapter.icon}
+                        label={chapter.title}
+                        size="small"
+                        type="chapter"
+                      />
+                      <span className="chapter-row__title">{chapter.title}</span>
+                      <span className="chapter-row__count">{chapter.quests.length}</span>
+                    </button>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </section>
           );
         })}
         {matchingIds.size === 0 ? (
-          <p className="empty-state">No chapters match “{query}”.</p>
+          <p className="panel-empty">No chapters match “{query}”.</p>
         ) : null}
       </nav>
     </div>

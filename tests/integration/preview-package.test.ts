@@ -92,7 +92,7 @@ describe('packaged browser preview', () => {
       expect(page.status).toBe(200);
       expect(javascript.status).toBe(200);
       expect(stylesheet.status).toBe(200);
-      expect(await stylesheet.text()).toContain('--canvas: #292b27');
+      expect(await stylesheet.text()).toContain('--mc-green: #55ff55');
       expect(await preview.text()).toContain('Packaged Quest');
     } finally {
       child.kill('SIGTERM');

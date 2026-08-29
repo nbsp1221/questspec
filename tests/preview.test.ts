@@ -100,7 +100,7 @@ describe('FTB Quests browser preview', () => {
       expect((await javascript.text()).length).toBeGreaterThan(10_000);
       expect(stylesheet.status).toBe(200);
       expect(stylesheet.headers.get('content-type')).toBe('text/css; charset=utf-8');
-      expect(await stylesheet.text()).toContain('--canvas: #292b27');
+      expect(await stylesheet.text()).toContain('--mc-green: #55ff55');
 
       const head = await fetch(preview.url, { method: 'HEAD' });
       expect(head.status).toBe(200);

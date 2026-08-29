@@ -27,56 +27,72 @@ export function QuestInspector({
   const labelFor = (id: string): string => questById.get(id)?.title ?? `Unavailable quest (${id})`;
 
   return (
-    <div className="inspector">
-      <div className="inspector-heading">
-        <div>
-          <span className="eyebrow">Read-only</span>
-          <h1>Inspector</h1>
-        </div>
+    <div className="inspector-panel">
+      <div className="panel-bar">
+        <h1 className="panel-bar__title">Quest</h1>
         {onClose === undefined ? null : (
-          <Button aria-label="Close inspector" className="chrome-button" onPress={onClose}>
-            <X aria-hidden="true" size={18} />
+          <Button aria-label="Close inspector" className="pixel-button" onPress={onClose}>
+            <X aria-hidden="true" size={16} />
           </Button>
         )}
       </div>
-      <Tabs aria-label="Quest inspector" className="inspector-tabs" defaultSelectedKey="details">
-        <TabList className="tab-list">
-          <Tab className="tab" id="details">
+      <Tabs aria-label="Quest inspector" className="pixel-tabs" defaultSelectedKey="details">
+        <TabList className="tab-strip">
+          <Tab className="pixel-tab" id="details">
             Details
           </Tab>
-          <Tab className="tab" id="diagnostics">
-            Diagnostics <span className="tab-count">{diagnostics.length}</span>
+          <Tab className="pixel-tab" id="diagnostics">
+            Diagnostics <span className="pixel-tab__count">{diagnostics.length}</span>
           </Tab>
         </TabList>
-        <TabPanel className="tab-panel" id="details">
+        <TabPanel className="tab-body" id="details">
           {quest === undefined ? (
-            <div className="inspector-empty">
-              <strong>Select a quest</strong>
-              <p>Its authored geometry, relationships, tasks, and rewards will appear here.</p>
+            <div className="panel-empty">
+              <strong>No quest selected</strong>
+              <p>Pick a quest on the map to read its tasks, rewards, and dependencies.</p>
             </div>
           ) : (
-            <article className="quest-details">
-              <div className="quest-hero">
-                <DomainIcon
-                  icon={quest.icon}
-                  label={quest.title}
-                  size="large"
-                  type={quest.tasks[0]?.type}
-                />
-                <div>
-                  <span className="eyebrow">Quest</span>
+            <article className="quest-sheet">
+              <div className="quest-sheet__head">
+                <span className="item-slot item-slot--large">
+                  <DomainIcon
+                    decorative
+                    icon={quest.icon}
+                    label={quest.title}
+                    size="large"
+                    type={quest.tasks[0]?.type}
+                  />
+                </span>
+                <div className="quest-sheet__naming">
                   <h2>{quest.title}</h2>
-                  {quest.subtitle ? <p>{quest.subtitle}</p> : null}
+                  {quest.subtitle ? (
+                    <p className="quest-sheet__subtitle">{quest.subtitle}</p>
+                  ) : null}
+                  {quest.optional ? <span className="pixel-badge">Optional</span> : null}
                 </div>
               </div>
-              {quest.description.length === 0 ? null : (
-                <div className="quest-description">
+              {quest.description.filter((line) => line.trim() !== '').length === 0 ? null : (
+                <div className="quest-sheet__body">
                   {quest.description.map((line, index) => (
                     <p key={`${line}-${index}`}>{line}</p>
                   ))}
                 </div>
               )}
-              <dl className="quest-metadata">
+              <EntrySection entries={quest.tasks} label="Tasks" />
+              <EntrySection entries={quest.rewards} label="Rewards" />
+              <RelationshipSection
+                ids={quest.dependencies}
+                label="Requires"
+                labelFor={labelFor}
+                onSelect={onSelectQuest}
+              />
+              <RelationshipSection
+                ids={dependents.map((candidate) => candidate.id)}
+                label="Unlocks"
+                labelFor={labelFor}
+                onSelect={onSelectQuest}
+              />
+              <dl className="quest-sheet__stats">
                 <div>
                   <dt>Position</dt>
                   <dd>
@@ -95,35 +111,21 @@ export function QuestInspector({
                   <dt>State</dt>
                   <dd>{quest.optional ? 'Optional' : 'Required'}</dd>
                 </div>
-                <div className="metadata-id">
+                <div className="quest-sheet__stat-wide">
                   <dt>Physical ID</dt>
                   <dd>
                     <code>{quest.id}</code>
                   </dd>
                 </div>
               </dl>
-              <RelationshipSection
-                ids={quest.dependencies}
-                label="Prerequisites"
-                labelFor={labelFor}
-                onSelect={onSelectQuest}
-              />
-              <RelationshipSection
-                ids={dependents.map((candidate) => candidate.id)}
-                label="Dependents"
-                labelFor={labelFor}
-                onSelect={onSelectQuest}
-              />
-              <EntrySection entries={quest.tasks} label="Tasks" />
-              <EntrySection entries={quest.rewards} label="Rewards" />
             </article>
           )}
         </TabPanel>
-        <TabPanel className="tab-panel" id="diagnostics">
+        <TabPanel className="tab-body" id="diagnostics">
           {diagnostics.length === 0 ? (
-            <div className="inspector-empty">
+            <div className="panel-empty">
               <strong>No diagnostics</strong>
-              <p>All readable preview structures loaded cleanly.</p>
+              <p>Every readable preview structure loaded cleanly.</p>
             </div>
           ) : (
             diagnostics.map((diagnostic, index) => (
@@ -155,21 +157,26 @@ function RelationshipSection({
   onSelect: (id: string) => void;
 }): React.JSX.Element {
   return (
-    <section className="detail-section">
+    <section className="sheet-section">
       <h3>
         {label}
         <span>{ids.length}</span>
       </h3>
       {ids.length === 0 ? (
-        <p className="section-empty">None</p>
+        <p className="sheet-section__empty">None</p>
       ) : (
-        <div className="relationship-list">
+        <ul className="link-list">
           {ids.map((id) => (
-            <button key={id} onClick={() => onSelect(id)} type="button">
-              {labelFor(id)}
-            </button>
+            <li key={id}>
+              <button onClick={() => onSelect(id)} type="button">
+                <span aria-hidden="true" className="link-list__arrow">
+                  ▸
+                </span>
+                {labelFor(id)}
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </section>
   );
@@ -186,25 +193,27 @@ function EntrySection({
     return null;
   }
   return (
-    <section className="detail-section">
+    <section className="sheet-section">
       <h3>
         {label}
         <span>{entries.length}</span>
       </h3>
-      <div className="entry-list">
+      <ul className="entry-list">
         {entries.map((entry, index) => (
-          <div className="detail-entry" key={`${entry.type}-${entry.label}-${index}`}>
-            <DomainIcon icon={entry.icon} label={entry.label} size="small" type={entry.type} />
-            <div>
-              <strong>
-                {entry.label}
-                {entry.count && entry.count !== 1 ? ` × ${entry.count}` : ''}
-              </strong>
-              <small>{humanize(entry.type)}</small>
-            </div>
-          </div>
+          <li className="entry-row" key={`${entry.type}-${entry.label}-${index}`}>
+            <span className="item-slot">
+              <DomainIcon decorative icon={entry.icon} label={entry.label} type={entry.type} />
+              {entry.count && entry.count !== 1 ? (
+                <span className="item-slot__count">{entry.count}</span>
+              ) : null}
+            </span>
+            <span className="entry-row__text">
+              <span className="entry-row__label">{entry.label}</span>
+              <span className="entry-row__type">{humanize(entry.type)}</span>
+            </span>
+          </li>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }

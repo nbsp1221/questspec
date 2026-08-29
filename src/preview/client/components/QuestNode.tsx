@@ -90,17 +90,40 @@ export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.E
       title={quest.title}
       type="button"
     >
-      <span aria-hidden="true" className="quest-node__focus-notches" />
+      <span aria-hidden="true" className="quest-node__plate" />
       <span aria-hidden="true" className="quest-node__frame">
         <span className="quest-node__face">
           <span className="quest-node__socket">
-            <DomainIcon icon={quest.icon} label={quest.title} type={quest.tasks[0]?.type} />
+            <DomainIcon
+              decorative
+              icon={quest.icon}
+              label={quest.title}
+              type={quest.tasks[0]?.type}
+            />
           </span>
         </span>
       </span>
-      <span className="quest-node__caption">
-        <span className="quest-node__label">{quest.title}</span>
-        {quest.optional ? <span className="quest-node__optional">Optional</span> : null}
+      {quest.optional ? (
+        <span aria-hidden="true" className="quest-node__mark quest-node__mark--optional">
+          ?
+        </span>
+      ) : null}
+      {data.diagnostic ? (
+        <span aria-hidden="true" className="quest-node__mark quest-node__mark--diagnostic">
+          !
+        </span>
+      ) : null}
+      <span aria-hidden="true" className="quest-tip">
+        <span className="quest-tip__title">{quest.title}</span>
+        {quest.tasks.length === 0 ? null : (
+          <span className="quest-tip__line">
+            {quest.tasks.length} {quest.tasks.length === 1 ? 'task' : 'tasks'}
+            {quest.rewards.length === 0
+              ? ''
+              : ` · ${quest.rewards.length} ${quest.rewards.length === 1 ? 'reward' : 'rewards'}`}
+          </span>
+        )}
+        {quest.optional ? <span className="quest-tip__optional">Optional</span> : null}
       </span>
     </button>
   );

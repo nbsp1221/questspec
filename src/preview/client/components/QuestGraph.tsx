@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from 'react-aria-components';
 import type { PreviewChapter, PreviewDiagnostic } from '../../types.ts';
 import { authoredPosition, questNodeSize, questRelations, shapeClass } from '../geometry.ts';
+import { DomainIcon } from './DomainIcon.tsx';
 import { QuestEdge, type QuestFlowEdge } from './QuestEdge.tsx';
 import { type QuestFlowNode, QuestNode } from './QuestNode.tsx';
 
@@ -336,24 +337,30 @@ function QuestGraphInner({
           onPaneClick={() => onSelect(undefined)}
           proOptions={{ hideAttribution: false }}
         ></ReactFlow>
-        <div aria-label="Graph view controls" className="graph-controls" role="group">
-          <Button aria-label="Zoom in" className="chrome-button" onPress={() => changeZoom(1.22)}>
-            <ZoomIn aria-hidden="true" size={18} />
+        <div aria-label="Graph view controls" className="graph-tools" role="group">
+          <Button aria-label="Zoom in" className="pixel-button" onPress={() => changeZoom(1.22)}>
+            <ZoomIn aria-hidden="true" size={16} />
           </Button>
           <Button
             aria-label="Zoom out"
-            className="chrome-button"
+            className="pixel-button"
             onPress={() => changeZoom(1 / 1.22)}
           >
-            <ZoomOut aria-hidden="true" size={18} />
+            <ZoomOut aria-hidden="true" size={16} />
           </Button>
-          <Button aria-label="Fit chapter" className="chrome-button" onPress={() => fit()}>
-            <LocateFixed aria-hidden="true" size={18} />
+          <Button aria-label="Fit chapter" className="pixel-button" onPress={() => fit()}>
+            <LocateFixed aria-hidden="true" size={16} />
           </Button>
         </div>
-        <p className="graph-help">
-          <span>Wheel / pinch</span> zoom · <span>drag</span> pan · <span>+/−/0</span> view ·{' '}
-          <span>arrows + Enter</span> quests
+        <p className="status-bar">
+          <span className="status-bar__cell">Zoom: [{zoom.toFixed(2)}]</span>
+          <span className="status-bar__cell">
+            Selected: {selectedQuestId === undefined ? 0 : 1}/{chapter.quests.length}
+          </span>
+          <span className="status-bar__cell">Links: {dependencyCount}</span>
+          <span className="status-bar__hint">
+            wheel zoom · drag pan · +/−/0 view · arrows + Enter quests
+          </span>
         </p>
       </div>
     </section>
@@ -378,16 +385,22 @@ function GraphToolbar({
   query: string;
 }): React.JSX.Element {
   return (
-    <div className="graph-toolbar">
-      <div className="graph-title">
-        <span className="eyebrow">Active chapter</span>
-        <h1>{chapter.title}</h1>
-        <small>
-          {chapter.quests.length} quests · {dependencyCount} links · authored layout
-        </small>
+    <div className="chapter-bar">
+      <DomainIcon
+        decorative
+        icon={chapter.icon}
+        label={chapter.title}
+        size="medium"
+        type="chapter"
+      />
+      <div className="chapter-bar__identity">
+        <h1 className="chapter-bar__title">{chapter.title}</h1>
+        <span className="chapter-bar__meta">
+          {chapter.quests.length} quests · {dependencyCount} links · {chapter.filename}
+        </span>
       </div>
-      <label className="search-field graph-search">
-        <Search aria-hidden="true" size={16} />
+      <label className="pixel-field graph-search">
+        <Search aria-hidden="true" size={13} />
         <span className="sr-only">Search quests in {chapter.title}</span>
         <input
           onChange={(event) => onQueryChange(event.target.value)}
@@ -404,7 +417,7 @@ function GraphToolbar({
           <span
             aria-atomic="true"
             aria-live="polite"
-            className={`graph-search-status${matchingCount === 0 ? ' is-empty' : ''}`}
+            className={`graph-search__status${matchingCount === 0 ? ' is-empty' : ''}`}
             role="status"
           >
             {matchingCount} {matchingCount === 1 ? 'match' : 'matches'}

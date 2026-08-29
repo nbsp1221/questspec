@@ -152,10 +152,10 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
               >
                 <Button
                   aria-label="Close chapters"
-                  className="chrome-button overlay-close"
+                  className="pixel-button overlay-close"
                   onPress={() => setChaptersOpen(false)}
                 >
-                  <X aria-hidden="true" size={18} />
+                  <X aria-hidden="true" size={16} />
                 </Button>
                 <ChapterNavigation
                   locale={locale}

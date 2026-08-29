@@ -9,99 +9,119 @@ interface DomainIconProps {
   type?: string;
 }
 
-interface ResourceIconStyle extends CSSProperties {
+interface SpriteStyle extends CSSProperties {
   '--icon-accent-hue': number;
   '--icon-hue': number;
-  '--icon-rotation': string;
+  '--icon-variant': number;
 }
+
+/**
+ * Blocky isometric cube faces shared by every block-like resource sprite. The
+ * sprite grid is 16x16 so every edge lands on a whole pixel boundary.
+ */
+const cube = (
+  <>
+    <path className="sprite-top" d="M8 1 15 5 8 9 1 5Z" />
+    <path className="sprite-left" d="M1 5 8 9v6L1 11Z" />
+    <path className="sprite-right" d="M15 5v6l-7 4V9Z" />
+  </>
+);
 
 const artwork: Record<string, React.ReactNode> = {
   combat: (
     <>
-      <path className="resource-icon__body" d="m5 18 2 1 11-11-3-3L5 16Z" />
-      <path className="resource-icon__detail" d="m13 5 2-2 6 6-2 2ZM4 15l5 5-2 2-5-5Z" />
+      <path className="sprite-shade" d="M5 0h6v11H5ZM3 10h10v3H3ZM5 12h6v4H5Z" />
+      <path className="sprite-left" d="M6 1h4v9H6ZM7 11h2v4H7Z" />
+      <path className="sprite-accent" d="M4 11h8v1H4Z" />
+      <path className="sprite-top" d="M6 1h2v9H6Z" />
     </>
   ),
   complete: (
     <>
-      <path className="resource-icon__body" d="m12 2 8 3v6c0 5-3.4 8.8-8 11-4.6-2.2-8-6-8-11V5Z" />
-      <path className="resource-icon__cut" d="m7.4 11.7 2.9 2.8 6.2-6.3" />
+      <path
+        className="sprite-shade"
+        d="M1 7h4v4H1ZM4 10h4v4H4ZM7 7h3v4H7ZM9 4h3v4H9ZM11 1h4v4h-4Z"
+      />
+      <path
+        className="sprite-check"
+        d="M2 8h2v2H2ZM4 10h2v2H4ZM6 8h2v2H6ZM8 6h2v2H8ZM10 4h2v2h-2ZM12 2h2v2h-2Z"
+      />
     </>
   ),
   experience: (
     <>
-      <path className="resource-icon__body" d="m12 2 7 6-2.5 10L12 22l-4.5-4L5 8Z" />
-      <path className="resource-icon__shine" d="m12 5 3.5 3-1.2 5.2-2.3 2-2.3-2L8.5 8Z" />
+      <path
+        className="sprite-shade"
+        d="M5 1h6v2H5ZM3 3h10v2H3ZM1 5h14v6H1ZM3 11h10v2H3ZM5 13h6v2H5Z"
+      />
+      <path
+        className="sprite-left"
+        d="M6 2h4v2H6ZM4 4h8v2H4ZM2 6h12v4H2ZM4 10h8v2H4ZM6 12h4v2H6Z"
+      />
+      <path className="sprite-top" d="M5 5h3v3H5Z" />
     </>
   ),
   food: (
     <>
-      <path
-        className="resource-icon__body"
-        d="M12 7c4-4 9 0 8 5-1 6-6 9-8 9s-7-3-8-9c-1-5 4-9 8-5Z"
-      />
-      <path className="resource-icon__detail" d="M12 7c0-3 2-5 5-5-1 3-2 5-5 5Z" />
-      <path className="resource-icon__shine" d="M7 11c1-2 2-3 4-3" />
+      <path className="sprite-shade" d="M2 4h12v11H2ZM5 1h3v3H5Z" />
+      <path className="sprite-left" d="M3 5h10v9H3Z" />
+      <path className="sprite-accent" d="M8 1h4v3H8Z" />
+      <path className="sprite-top" d="M5 6h3v3H5Z" />
     </>
   ),
   knowledge: (
     <>
-      <path
-        className="resource-icon__body"
-        d="M3 4h7c1.2 0 2 .8 2 2v15c0-1.5-1.2-3-3-3H3Zm18 0h-7c-1.2 0-2 .8-2 2v15c0-1.5 1.2-3 3-3h6Z"
-      />
-      <path className="resource-icon__detail" d="M6 8h3M6 11h3M15 8h3M15 11h3" />
+      <path className="sprite-shade" d="M1 2h14v13H1Z" />
+      <path className="sprite-left" d="M2 3h12v11H2Z" />
+      <path className="sprite-top" d="M4 4h8v9H4Z" />
+      <path className="sprite-detail" d="M5 6h6v1H5ZM5 8h6v1H5ZM5 10h4v1H5Z" />
     </>
   ),
   magic: (
     <>
-      <path
-        className="resource-icon__body"
-        d="M9 3h6v4l4 8c1.7 3.5-.2 6-3.5 6h-7C5.2 21 3.3 18.5 5 15l4-8Z"
-      />
-      <path className="resource-icon__detail" d="M8 14h8l2 4H6Z" />
-      <path className="resource-icon__shine" d="M10 4h4M9 11h6" />
+      <path className="sprite-shade" d="M6 0h4v4H6ZM3 3h10v13H3Z" />
+      <path className="sprite-left" d="M7 1h2v3H7ZM4 4h8v11H4Z" />
+      <path className="sprite-accent" d="M5 7h6v7H5Z" />
+      <path className="sprite-top" d="M6 8h2v3H6Z" />
     </>
   ),
   material: (
     <>
-      <path className="resource-icon__body" d="m5 8 4-4h9l2 5-5 10H5L3 14Z" />
-      <path className="resource-icon__detail" d="m5 8 5 3h9M10 11l-2 8" />
-      <path className="resource-icon__shine" d="m9 6 7-1" />
+      {cube}
+      <path className="sprite-detail" d="M3 7h2v2H3ZM10 8h2v2h-2ZM6 11h2v2H6Z" />
     </>
   ),
   nature: (
     <>
-      <path className="resource-icon__body" d="M4 6h13l3 4v9H7l-3-4Z" />
-      <path className="resource-icon__detail" d="M7 6v13M17 6l-3 4v9M7 10h13M10 13h2m3 3h2" />
-      <path className="resource-icon__shine" d="M6 7h9" />
+      <path className="sprite-shade" d="M4 1h8v4H4ZM2 4h12v5H2ZM4 8h8v4H4ZM6 11h4v5H6Z" />
+      <path className="sprite-left" d="M5 2h6v3H5ZM3 5h10v3H3ZM5 8h6v3H5Z" />
+      <path className="sprite-top" d="M6 3h3v2H6Z" />
+      <path className="sprite-trunk" d="M7 11h2v4H7Z" />
     </>
   ),
   place: (
     <>
-      <path className="resource-icon__body" d="M3 19 8 9l4 5 3-4 6 9Z" />
-      <path className="resource-icon__detail" d="m6 15 2-2 2 2 2-1 3 3 2-3 2 3" />
-      <path className="resource-icon__shine" d="M4 19h17" />
+      {cube}
+      <path className="sprite-detail" d="M2 8h3v1H2ZM11 9h3v1h-3ZM6 12h4v1H6Z" />
     </>
   ),
   quest: (
     <>
-      <path className="resource-icon__body" d="m4 7 8-4 8 4v10l-8 4-8-4Z" />
-      <path className="resource-icon__detail" d="m4 7 8 4 8-4M12 11v10" />
-      <path className="resource-icon__shine" d="m8 5 8 4" />
+      {cube}
+      <path className="sprite-detail" d="M7 9h2v5H7Z" />
     </>
   ),
   tool: (
     <>
-      <path className="resource-icon__body" d="m4 3 8 4-2 3-3-1-3 12-3-1L4 8 2 6Z" />
-      <path className="resource-icon__detail" d="m10 7 9-3 3 3-11 4Z" />
-      <path className="resource-icon__shine" d="m6 9-3 10" />
+      <path className="sprite-shade" d="M1 1h6v4H1ZM9 1h6v4H9ZM5 4h6v4H5ZM6 7h4v9H6Z" />
+      <path className="sprite-left" d="M2 2h4v2H2ZM10 2h4v2h-4ZM6 5h4v2H6ZM7 7h2v8H7Z" />
+      <path className="sprite-top" d="M2 2h12v1H2Z" />
     </>
   ),
   transport: (
     <>
-      <path className="resource-icon__body" d="M7 3h10l2 15H5Z" />
-      <path className="resource-icon__detail" d="M8 3 6 21m10-18 2 18M6 8h12M6 13h12M5 18h14" />
+      {cube}
+      <path className="sprite-detail" d="M1 7h14v1H1ZM1 10h14v1H1Z" />
     </>
   ),
 };
@@ -114,10 +134,10 @@ export function DomainIcon({
   type,
 }: DomainIconProps): React.JSX.Element {
   const descriptor = resolveDomainIcon({ icon, label, type });
-  const style: ResourceIconStyle = {
+  const style: SpriteStyle = {
     '--icon-accent-hue': descriptor.accentHue,
     '--icon-hue': descriptor.hue,
-    '--icon-rotation': `${descriptor.rotation}deg`,
+    '--icon-variant': descriptor.rotation,
   };
   return (
     <span
@@ -128,12 +148,12 @@ export function DomainIcon({
       role={decorative ? undefined : 'img'}
       style={style}
     >
-      <svg aria-hidden="true" viewBox="0 0 24 24">
-        <g className="resource-icon__art">{artwork[descriptor.kind]}</g>
-        <text className="resource-icon__monogram" x="18.8" y="20.2">
-          {descriptor.monogram}
-        </text>
+      <svg aria-hidden="true" viewBox="0 0 16 16">
+        {artwork[descriptor.kind]}
       </svg>
+      <span aria-hidden="true" className="resource-icon__stack">
+        {descriptor.monogram}
+      </span>
     </span>
   );
 }
