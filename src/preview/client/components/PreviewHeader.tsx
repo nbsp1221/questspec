@@ -1,8 +1,11 @@
 import { Menu, PanelRight } from 'lucide-react';
 import { Button } from 'react-aria-components';
 import type { QuestPreview } from '../../types.ts';
+import { previewLocaleLabel } from '../../locale.ts';
 
 interface PreviewHeaderProps {
+  chaptersOpen: boolean;
+  inspectorOpen: boolean;
   locale: string;
   onLocaleChange: (locale: string) => void;
   onOpenChapters: () => void;
@@ -12,6 +15,8 @@ interface PreviewHeaderProps {
 }
 
 export function PreviewHeader({
+  chaptersOpen,
+  inspectorOpen,
   locale,
   onLocaleChange,
   onOpenChapters,
@@ -23,7 +28,8 @@ export function PreviewHeader({
   return (
     <header className="app-header">
       <Button
-        aria-controls="chapter-drawer"
+        aria-controls={chaptersOpen ? 'chapter-drawer' : undefined}
+        aria-expanded={chaptersOpen}
         aria-label="Open chapters"
         className="chrome-button narrow-only"
         onPress={onOpenChapters}
@@ -59,13 +65,14 @@ export function PreviewHeader({
         <select onChange={(event) => onLocaleChange(event.target.value)} value={locale}>
           {Object.keys(preview.locales).map((key) => (
             <option key={key} value={key}>
-              {key.replace('_', '-').toUpperCase()}
+              {previewLocaleLabel(key)}
             </option>
           ))}
         </select>
       </label>
       <Button
-        aria-controls="inspector-sheet"
+        aria-controls={inspectorOpen ? 'inspector-sheet' : undefined}
+        aria-expanded={inspectorOpen}
         aria-label="Open inspector"
         className="chrome-button narrow-only"
         onPress={onOpenInspector}

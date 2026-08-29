@@ -8,6 +8,7 @@ import { ChapterNavigation } from './components/ChapterNavigation.tsx';
 import { PreviewHeader } from './components/PreviewHeader.tsx';
 import { QuestGraph } from './components/QuestGraph.tsx';
 import { QuestInspector } from './components/QuestInspector.tsx';
+import { previewViewportKey } from './geometry.ts';
 import { useMediaQuery } from './use-media-query.ts';
 
 interface PreviewAppProps {
@@ -87,6 +88,8 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
   return (
     <div className="preview-app">
       <PreviewHeader
+        chaptersOpen={chaptersOpen}
+        inspectorOpen={inspectorOpen}
         locale={localeKey}
         onLocaleChange={changeLocale}
         onOpenChapters={() => setChaptersOpen(true)}
@@ -113,8 +116,8 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
           ) : (
             <QuestGraph
               chapter={chapter}
-              key={`${localeKey}:${chapter.id}:${narrow ? 'narrow' : 'wide'}`}
-              memoryKey={`${localeKey}:${chapter.id}:${narrow ? 'narrow' : 'wide'}`}
+              key={`${localeKey}:${chapter.id}`}
+              memoryKey={previewViewportKey(localeKey, chapter.id)}
               onSelect={selectQuest}
               selectedQuestId={selectedQuestId}
               viewportMemory={viewportMemory}

@@ -1,7 +1,8 @@
+import type { CSSProperties, KeyboardEvent } from 'react';
 import {
   Background,
   BackgroundVariant,
-  type Edge,
+  type EdgeTypes,
   type NodeTypes,
   ReactFlow,
   type ReactFlowInstance,
@@ -12,7 +13,8 @@ import { LocateFixed, Search, ZoomIn, ZoomOut } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from 'react-aria-components';
 import type { PreviewChapter } from '../../types.ts';
-import { authoredPosition, questNodeSize, questRelations } from '../geometry.ts';
+import { authoredPosition, questNodeSize, questRelations, shapeClass } from '../geometry.ts';
+import { QuestEdge, type QuestFlowEdge } from './QuestEdge.tsx';
 import { type QuestFlowNode, QuestNode } from './QuestNode.tsx';
 
 interface QuestGraphProps {
@@ -23,7 +25,19 @@ interface QuestGraphProps {
   viewportMemory: Map<string, Viewport>;
 }
 
+export const GRAPH_INTERACTION_PROPS = Object.freeze({
+  panOnDrag: true,
+  panOnScroll: false,
+  preventScrolling: true,
+  zoomOnDoubleClick: false,
+  zoomOnPinch: true,
+  zoomOnScroll: true,
+});
+
+const MIN_ZOOM = 0.08;
+const MAX_ZOOM = 2.5;
 const nodeTypes = { quest: QuestNode } satisfies NodeTypes;
+const edgeTypes = { quest: QuestEdge } satisfies EdgeTypes;
 
 export function QuestGraph(props: QuestGraphProps): React.JSX.Element {
   return (
@@ -40,7 +54,7 @@ function QuestGraphInner({
   selectedQuestId,
   viewportMemory,
 }: QuestGraphProps): React.JSX.Element {
-  const [instance, setInstance] = useState<ReactFlowInstance<QuestFlowNode, Edge>>();
+  const [instance, setInstance] = useState<ReactFlowInstance<QuestFlowNode, QuestFlowEdge>>();
   const [query, setQuery] = useState('');
   const [zoom, setZoom] = useState(1);
   const [focusedId, setFocusedId] = useState(selectedQuestId ?? chapter.quests[0]?.id);
@@ -91,8 +105,8 @@ function QuestGraphInner({
           const primary = horizontal ? quest.x - current.x : quest.y - current.y;
           const secondary = horizontal ? quest.y - current.y : quest.x - current.x;
           return {
-            quest,
             primary: primary * direction,
+            quest,
             score: Math.abs(primary) + Math.abs(secondary) * 1.5,
           };
         })
@@ -114,22 +128,31 @@ function QuestGraphInner({
 
   const nodes = useMemo<QuestFlowNode[]>(
     () =>
-      chapter.quests.map((quest) => ({
-        data: {
-          dimmed: normalizedQuery !== '' && !matchingQuestIds.has(quest.id),
-          focused: quest.id === focusedId,
-          onActivate: onSelect,
-          onFocus: setFocusedId,
-          onNavigate: navigate,
-          quest,
-          relation: relations.get(quest.id) ?? 'neutral',
-          selected: quest.id === selectedQuestId,
-        },
-        id: quest.id,
-        origin: [0.5, 0.5],
-        position: authoredPosition(quest),
-        type: 'quest',
-      })),
+      chapter.quests.map((quest) => {
+        const size = questNodeSize(quest.size);
+        const style = {
+          '--node-size': `${size}px`,
+          'height': size,
+          'width': size,
+        } as CSSProperties;
+        return {
+          data: {
+            dimmed: normalizedQuery !== '' && !matchingQuestIds.has(quest.id),
+            focused: quest.id === focusedId,
+            onActivate: onSelect,
+            onFocus: setFocusedId,
+            onNavigate: navigate,
+            quest,
+            relation: relations.get(quest.id) ?? 'neutral',
+            selected: quest.id === selectedQuestId,
+          },
+          id: quest.id,
+          origin: [0.5, 0.5],
+          position: authoredPosition(quest),
+          style,
+          type: 'quest',
+        };
+      }),
     [
       chapter.quests,
       focusedId,
@@ -142,17 +165,20 @@ function QuestGraphInner({
     ],
   );
 
-  const edges = useMemo<Edge[]>(
+  const edges = useMemo<QuestFlowEdge[]>(
     () =>
       chapter.quests.flatMap((quest) =>
         quest.hideDependencyLines
           ? []
           : quest.dependencies
               .filter((dependency) => questById.has(dependency))
-              .map((dependency) => {
+              .map((dependency): QuestFlowEdge => {
                 const source = questById.get(dependency);
+                if (source === undefined) {
+                  throw new Error(`Missing filtered quest dependency: ${dependency}`);
+                }
                 return {
-                  ariaLabel: `${source?.title ?? 'Unavailable quest'} is a prerequisite of ${quest.title}`,
+                  ariaLabel: `${source.title} is a prerequisite of ${quest.title}`,
                   className:
                     selectedQuestId === undefined
                       ? 'relation-neutral'
@@ -161,12 +187,18 @@ function QuestGraphInner({
                         : dependency === selectedQuestId
                           ? 'relation-dependent'
                           : 'relation-muted',
+                  data: {
+                    sourceShape: shapeClass(source.shape),
+                    sourceSize: questNodeSize(source.size),
+                    targetShape: shapeClass(quest.shape),
+                    targetSize: questNodeSize(quest.size),
+                  },
                   id: `${dependency}->${quest.id}`,
                   source: dependency,
                   sourceHandle: 'source',
                   target: quest.id,
                   targetHandle: 'target',
-                  type: 'straight',
+                  type: 'quest',
                 };
               }),
       ),
@@ -175,9 +207,9 @@ function QuestGraphInner({
 
   const bounds = useMemo(() => authoredBounds(chapter), [chapter]);
   const fit = useCallback(
-    (duration = 180): void => {
+    (duration = motionDuration(180)): void => {
       if (instance !== undefined && bounds !== undefined) {
-        void instance.fitBounds(bounds, { duration, padding: 0.12 });
+        void instance.fitBounds(bounds, { duration, padding: 0.14 });
       }
     },
     [bounds, instance],
@@ -204,10 +236,9 @@ function QuestGraphInner({
       return;
     }
     const viewport = instance.getViewport();
-    void instance.setViewport(
-      { ...viewport, zoom: Math.max(0.08, Math.min(2.5, viewport.zoom * factor)) },
-      { duration: 120 },
-    );
+    void instance.zoomTo(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, viewport.zoom * factor)), {
+      duration: motionDuration(120),
+    });
   };
 
   const selectFirstMatch = (): void => {
@@ -221,9 +252,25 @@ function QuestGraphInner({
     onSelect(match.id);
     const position = authoredPosition(match);
     void instance.setCenter(position.x, position.y, {
-      duration: 180,
+      duration: motionDuration(180),
       zoom: Math.max(1, instance.getZoom()),
     });
+  };
+
+  const handleCanvasKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+    if (event.key === '+' || event.key === '=') {
+      event.preventDefault();
+      changeZoom(1.22);
+    } else if (event.key === '-') {
+      event.preventDefault();
+      changeZoom(1 / 1.22);
+    } else if (event.key === '0') {
+      event.preventDefault();
+      fit();
+    }
   };
 
   const zoomMode = zoom < 0.5 ? 'overview' : zoom < 0.82 ? 'compact' : 'detail';
@@ -233,48 +280,32 @@ function QuestGraphInner({
       aria-label={`${chapter.title} quest dependency graph`}
       className={`quest-workspace zoom-${zoomMode}${selectedQuestId === undefined ? '' : ' has-selection'}`}
     >
-      <div className="graph-toolbar">
-        <div className="graph-title">
-          <span className="eyebrow">Active chapter</span>
-          <h1>{chapter.title}</h1>
-          <small>
-            {chapter.quests.length} quests · {dependencyCount} links · authored layout
-          </small>
-        </div>
-        <label className="search-field graph-search">
-          <Search aria-hidden="true" size={16} />
-          <span className="sr-only">Search quests in {chapter.title}</span>
-          <input
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                selectFirstMatch();
-              }
-            }}
-            placeholder="Find a quest"
-            type="search"
-            value={query}
-          />
-          {normalizedQuery === '' ? null : (
-            <span
-              aria-atomic="true"
-              aria-live="polite"
-              className={`graph-search-status${matchingQuests.length === 0 ? ' is-empty' : ''}`}
-              role="status"
-            >
-              {matchingQuests.length} {matchingQuests.length === 1 ? 'match' : 'matches'}
-            </span>
-          )}
-        </label>
-      </div>
-      <div className="graph-canvas">
-        <ReactFlow<QuestFlowNode, Edge>
+      <GraphToolbar
+        chapter={chapter}
+        dependencyCount={dependencyCount}
+        matchingCount={matchingQuests.length}
+        normalizedQuery={normalizedQuery}
+        onQueryChange={setQuery}
+        onSelectFirstMatch={selectFirstMatch}
+        query={query}
+      />
+      <div
+        aria-keyshortcuts="+ - 0"
+        aria-label="Quest graph canvas. Use the mouse wheel or pinch to zoom, drag to pan, plus and minus to zoom, and zero to fit the chapter."
+        className="graph-canvas"
+        onKeyDown={handleCanvasKeyDown}
+        role="region"
+        tabIndex={0}
+      >
+        <ReactFlow<QuestFlowNode, QuestFlowEdge>
+          {...GRAPH_INTERACTION_PROPS}
           colorMode="dark"
           disableKeyboardA11y
+          edgeTypes={edgeTypes}
           edges={edges}
           edgesFocusable={false}
-          maxZoom={2.5}
-          minZoom={0.08}
+          maxZoom={MAX_ZOOM}
+          minZoom={MIN_ZOOM}
           nodeTypes={nodeTypes}
           nodes={nodes}
           nodesConnectable={false}
@@ -284,15 +315,22 @@ function QuestGraphInner({
           onMove={(_event, viewport) => setZoom(viewport.zoom)}
           onMoveEnd={(_event, viewport) => viewportMemory.set(memoryKey, viewport)}
           onPaneClick={() => onSelect(undefined)}
-          panOnDrag
-          panOnScroll={false}
-          preventScrolling={false}
           proOptions={{ hideAttribution: false }}
-          zoomOnDoubleClick={false}
-          zoomOnPinch
-          zoomOnScroll={false}
         >
-          <Background color="#3b3a35" gap={28} lineWidth={1} variant={BackgroundVariant.Lines} />
+          <Background
+            color="var(--grid-minor)"
+            gap={28}
+            id="minor-grid"
+            size={1}
+            variant={BackgroundVariant.Dots}
+          />
+          <Background
+            color="var(--grid-major)"
+            gap={140}
+            id="major-grid"
+            lineWidth={1}
+            variant={BackgroundVariant.Lines}
+          />
         </ReactFlow>
         <div aria-label="Graph view controls" className="graph-controls" role="group">
           <Button aria-label="Zoom in" className="chrome-button" onPress={() => changeZoom(1.22)}>
@@ -310,10 +348,66 @@ function QuestGraphInner({
           </Button>
         </div>
         <p className="graph-help">
-          Drag to pan · pinch or controls to zoom · arrow keys move focus · Enter selects
+          <span>Wheel / pinch</span> zoom · <span>drag</span> pan · <span>+/−/0</span> view ·{' '}
+          <span>arrows + Enter</span> quests
         </p>
       </div>
     </section>
+  );
+}
+
+function GraphToolbar({
+  chapter,
+  dependencyCount,
+  matchingCount,
+  normalizedQuery,
+  onQueryChange,
+  onSelectFirstMatch,
+  query,
+}: {
+  chapter: PreviewChapter;
+  dependencyCount: number;
+  matchingCount: number;
+  normalizedQuery: string;
+  onQueryChange: (query: string) => void;
+  onSelectFirstMatch: () => void;
+  query: string;
+}): React.JSX.Element {
+  return (
+    <div className="graph-toolbar">
+      <div className="graph-title">
+        <span className="eyebrow">Active chapter</span>
+        <h1>{chapter.title}</h1>
+        <small>
+          {chapter.quests.length} quests · {dependencyCount} links · authored layout
+        </small>
+      </div>
+      <label className="search-field graph-search">
+        <Search aria-hidden="true" size={16} />
+        <span className="sr-only">Search quests in {chapter.title}</span>
+        <input
+          onChange={(event) => onQueryChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              onSelectFirstMatch();
+            }
+          }}
+          placeholder="Find a quest"
+          type="search"
+          value={query}
+        />
+        {normalizedQuery === '' ? null : (
+          <span
+            aria-atomic="true"
+            aria-live="polite"
+            className={`graph-search-status${matchingCount === 0 ? ' is-empty' : ''}`}
+            role="status"
+          >
+            {matchingCount} {matchingCount === 1 ? 'match' : 'matches'}
+          </span>
+        )}
+      </label>
+    </div>
   );
 }
 
@@ -333,7 +427,7 @@ function authoredBounds(
     minimumX = Math.min(minimumX, position.x - radius);
     minimumY = Math.min(minimumY, position.y - radius);
     maximumX = Math.max(maximumX, position.x + radius);
-    maximumY = Math.max(maximumY, position.y + radius + 34);
+    maximumY = Math.max(maximumY, position.y + radius + 36);
   }
   return {
     height: Math.max(1, maximumY - minimumY),
@@ -341,4 +435,8 @@ function authoredBounds(
     x: minimumX,
     y: minimumY,
   };
+}
+
+function motionDuration(duration: number): number {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : duration;
 }

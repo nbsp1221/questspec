@@ -2,17 +2,21 @@
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { PreviewLocale, PreviewQuest } from '../src/preview/types.ts';
+import type { PreviewLocale, PreviewQuest, QuestPreview } from '../src/preview/types.ts';
 import { ChapterNavigation } from '../src/preview/client/components/ChapterNavigation.tsx';
+import { PreviewHeader } from '../src/preview/client/components/PreviewHeader.tsx';
+import { GRAPH_INTERACTION_PROPS } from '../src/preview/client/components/QuestGraph.tsx';
 import { QuestInspector } from '../src/preview/client/components/QuestInspector.tsx';
 import {
   authoredPosition,
+  clippedEdgeEndpoints,
+  previewViewportKey,
   questNodeSize,
   questRelations,
   shapeClass,
 } from '../src/preview/client/geometry.ts';
 import { resolveDomainIcon } from '../src/preview/client/icon-resolver.ts';
-import { previewDocumentLanguage } from '../src/preview/locale.ts';
+import { previewDocumentLanguage, previewLocaleLabel } from '../src/preview/locale.ts';
 
 const firstQuest: PreviewQuest = {
   dependencies: [],
@@ -88,11 +92,69 @@ describe('preview UI model boundaries', () => {
     });
   });
 
+  it('configures ordinary pointer-anchored wheel zoom only inside React Flow', () => {
+    expect(GRAPH_INTERACTION_PROPS).toEqual({
+      panOnDrag: true,
+      panOnScroll: false,
+      preventScrolling: true,
+      zoomOnDoubleClick: false,
+      zoomOnPinch: true,
+      zoomOnScroll: true,
+    });
+  });
+
+  it('clips straight edges from measured centers to every supported node silhouette', () => {
+    const shapes = [
+      'circle',
+      'diamond',
+      'gear',
+      'hexagon',
+      'octagon',
+      'pentagon',
+      'rounded',
+      'square',
+    ] as const;
+    for (const shape of shapes) {
+      const endpoints = clippedEdgeEndpoints(
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        shape,
+        56,
+        shape,
+        56,
+      );
+      expect(endpoints.source.y).toBeCloseTo(0);
+      expect(endpoints.target.y).toBeCloseTo(0);
+      expect(endpoints.source.x).toBeGreaterThan(20);
+      expect(endpoints.source.x).toBeLessThan(28.000_001);
+      expect(endpoints.target.x).toBeGreaterThan(71.999_999);
+      expect(endpoints.target.x).toBeLessThan(80);
+    }
+    const diagonal = clippedEdgeEndpoints(
+      { x: 0, y: 0 },
+      { x: 100, y: 100 },
+      'circle',
+      56,
+      'diamond',
+      56,
+    );
+    expect(diagonal.source.x).toBeCloseTo(19.79899, 4);
+    expect(diagonal.source.y).toBeCloseTo(19.79899, 4);
+    expect(diagonal.target).toEqual({ x: 86, y: 86 });
+  });
+
+  it('keeps viewport memory independent of responsive layout mode', () => {
+    expect(previewViewportKey('en_us', 'chapter')).toBe('en_us:chapter');
+    expect(previewViewportKey('en_us', 'chapter')).toBe(previewViewportKey('en_us', 'chapter'));
+  });
+
   it('uses valid document languages for source and authored locale keys', () => {
     expect(previewDocumentLanguage('SOURCE')).toBe('en');
     expect(previewDocumentLanguage('en_us')).toBe('en-US');
     expect(previewDocumentLanguage('ko_kr')).toBe('ko-KR');
     expect(previewDocumentLanguage('not_a_valid_locale!')).toBe('en');
+    expect(previewLocaleLabel('SOURCE')).toBe('Source text');
+    expect(previewLocaleLabel('en_us')).toBe('English (US)');
   });
 
   it('resolves label-first original domain symbols without emoji or raw-ID labels', () => {
@@ -122,6 +184,35 @@ describe('preview components', () => {
     expect(screen.queryByRole('button', { name: /Alpha/u })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Beta/u }));
     expect(select).toHaveBeenCalledWith(locale.chapters[1]);
+  });
+
+  it('renders readable locales and valid closed narrow-overlay trigger state', () => {
+    const preview: QuestPreview = {
+      diagnostics: [],
+      directory: '/packs/example/quests',
+      locales: { en_us: locale, ko_kr: locale },
+      selectedLocale: 'en_us',
+      stats: { chapters: 2, dependencies: 1, groups: 1, quests: 2 },
+    };
+    render(
+      <PreviewHeader
+        chaptersOpen={false}
+        inspectorOpen={false}
+        locale="en_us"
+        onLocaleChange={vi.fn()}
+        onOpenChapters={vi.fn()}
+        onOpenInspector={vi.fn()}
+        preview={preview}
+        stats={preview.stats}
+      />,
+    );
+    expect(screen.getByRole('option', { name: 'English (US)' })).toBeDefined();
+    expect(screen.getByRole('option', { name: '한국어 (KR)' })).toBeDefined();
+    for (const name of ['Open chapters', 'Open inspector']) {
+      const trigger = screen.getByRole('button', { name });
+      expect(trigger.getAttribute('aria-expanded')).toBe('false');
+      expect(trigger.getAttribute('aria-controls')).toBeNull();
+    }
   });
 
   it('uses accessible tabs and label-first relationship navigation in the inspector', () => {

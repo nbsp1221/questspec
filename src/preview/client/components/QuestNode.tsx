@@ -1,7 +1,7 @@
-import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react';
+import type { KeyboardEvent, MouseEvent } from 'react';
 import { Handle, type Node, type NodeProps, Position } from '@xyflow/react';
 import type { PreviewQuest } from '../../types.ts';
-import { type QuestRelation, questNodeSize, shapeClass } from '../geometry.ts';
+import { type QuestRelation, shapeClass } from '../geometry.ts';
 import { DomainIcon } from './DomainIcon.tsx';
 
 export interface QuestNodeData extends Record<string, unknown> {
@@ -17,11 +17,17 @@ export interface QuestNodeData extends Record<string, unknown> {
 
 export type QuestFlowNode = Node<QuestNodeData, 'quest'>;
 
+const CENTER_HANDLE_STYLE = {
+  left: '50%',
+  pointerEvents: 'none' as const,
+  top: '50%',
+  transform: 'translate(-50%, -50%)',
+};
+
 export function QuestNode({ data }: NodeProps<QuestFlowNode>): React.JSX.Element {
   const { quest } = data;
   const optional = quest.optional ? ', optional' : '';
   const relationship = data.relation === 'neutral' ? '' : `, ${data.relation}`;
-  const style = { '--node-size': `${questNodeSize(quest.size)}px` } as CSSProperties;
 
   const activate = (event: MouseEvent<HTMLButtonElement>): void => {
     event.stopPropagation();
@@ -41,7 +47,8 @@ export function QuestNode({ data }: NodeProps<QuestFlowNode>): React.JSX.Element
         className="quest-handle"
         id="target"
         isConnectable={false}
-        position={Position.Left}
+        position={Position.Top}
+        style={CENTER_HANDLE_STYLE}
         type="target"
       />
       <button
@@ -52,7 +59,6 @@ export function QuestNode({ data }: NodeProps<QuestFlowNode>): React.JSX.Element
         onClick={activate}
         onFocus={() => data.onFocus(quest.id)}
         onKeyDown={onKeyDown}
-        style={style}
         tabIndex={data.focused ? 0 : -1}
         title={quest.title}
         type="button"
@@ -62,14 +68,17 @@ export function QuestNode({ data }: NodeProps<QuestFlowNode>): React.JSX.Element
             <DomainIcon icon={quest.icon} label={quest.title} type={quest.tasks[0]?.type} />
           </span>
         </span>
-        <span className="quest-node__label">{quest.title}</span>
-        {quest.optional ? <span className="quest-node__optional">Optional</span> : null}
+        <span className="quest-node__caption">
+          <span className="quest-node__label">{quest.title}</span>
+          {quest.optional ? <span className="quest-node__optional">Optional</span> : null}
+        </span>
       </button>
       <Handle
         className="quest-handle"
         id="source"
         isConnectable={false}
-        position={Position.Right}
+        position={Position.Top}
+        style={CENTER_HANDLE_STYLE}
         type="source"
       />
     </>
