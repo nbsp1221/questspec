@@ -3,6 +3,7 @@ import { Button } from 'react-aria-components';
 import type { QuestPreview } from '../../types.ts';
 import { previewLocaleLabel } from '../../locale.ts';
 import { DomainIcon } from './DomainIcon.tsx';
+import { ThemeToggle } from './ThemeToggle.tsx';
 
 interface PreviewHeaderProps {
   chaptersOpen: boolean;
@@ -68,6 +69,7 @@ export function PreviewHeader({
           ))}
         </select>
       </label>
+      <ThemeToggle />
       <Button
         aria-controls={inspectorOpen ? 'inspector-sheet' : undefined}
         aria-expanded={inspectorOpen}

@@ -5,6 +5,6 @@
     "lib": ["es2025", "DOM", "DOM.Iterable"],
     "types": ["react", "react-dom", "vitest/globals"]
   },
-  "include": ["src/preview/client", "tests/preview-ui.test.tsx"],
+  "include": ["src/preview/client", "tests/preview-theme.test.tsx", "tests/preview-ui.test.tsx"],
   "exclude": []
 }

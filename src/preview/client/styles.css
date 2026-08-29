@@ -1,62 +1,18 @@
 /*
  * QuestSpec browser preview presentation.
  *
- * The preview imitates the look of the in-game FTB Quests screen: translucent
- * black GUI panels with hard one-pixel edges, bitmap-style text with a black
- * drop shadow, item-slot bevels, and green segmented dependency ribbons drawn
- * over a flat dim backdrop. Every fill is a flat colour, every measurement is a
- * whole pixel, and nothing is animated, blurred, glowed, or graded, because
- * in-game GUI art has none of that either.
+ * The preview imitates the look of the in-game FTB Quests screen: GUI panels
+ * with hard one-pixel edges, bitmap-style text with a one-pixel drop shadow,
+ * item-slot bevels, and green segmented dependency ribbons drawn over a flat
+ * backdrop. Every fill is a flat colour, every measurement is a whole pixel,
+ * and nothing is animated, blurred, glowed, or graded, because in-game GUI art
+ * has none of that either.
+ *
+ * Colours live in tokens.css. Rules here name semantic tokens only, so both
+ * themes share one set of component rules.
  */
 
-:root {
-  color-scheme: dark;
-
-  /* Minecraft chat-code palette. */
-  --mc-white: #ffffff;
-  --mc-gray: #aaaaaa;
-  --mc-dark-gray: #555555;
-  --mc-green: #55ff55;
-  --mc-dark-green: #1e8a24;
-  --mc-aqua: #55ffff;
-  --mc-blue: #5f7fff;
-  --mc-yellow: #ffff55;
-  --mc-gold: #ffaa00;
-  --mc-red: #ff5555;
-  --mc-dark-red: #a02020;
-
-  /* GUI surfaces. */
-  --world: #17191b;
-  --panel: rgba(10, 10, 12, 0.88);
-  --panel-solid: #0c0c0e;
-  --panel-sunken: rgba(0, 0, 0, 0.42);
-  --edge-black: #000000;
-  --edge-light: #6f6f74;
-  --edge-dim: #2c2c30;
-  --widget: #4b4b51;
-  --widget-light: #83838a;
-  --widget-dark: #212126;
-  --slot-fill: #1a1a1d;
-  --slot-shadow: #050506;
-  --slot-light: #55555a;
-  --text: #dcdcdc;
-  --text-dim: #9a9a9a;
-  --text-faint: #6c6c70;
-
-  --pixel-shadow: 1px 1px 0 rgba(0, 0, 0, 0.95);
-  --pixel-shadow-lg: 2px 2px 0 rgba(0, 0, 0, 0.95);
-
-  --font-pixel:
-    'Minecraft', 'Monocraft', 'Pixel Operator', 'PixelOperator', 'Silkscreen', 'Press Start 2P',
-    'Galmuri11', 'Terminus', 'Unifont', 'DejaVu Sans Mono', 'Noto Sans Mono', 'Liberation Mono',
-    'Noto Sans KR', ui-monospace, monospace;
-
-  --rail-width: 268px;
-  --inspector-width: 340px;
-
-  font-family: var(--font-pixel);
-  font-synthesis: none;
-}
+@import './tokens.css';
 
 * {
   box-sizing: border-box;
@@ -75,8 +31,8 @@ body {
 }
 
 body {
-  background: var(--world);
-  color: var(--text);
+  background: var(--surface-world);
+  color: var(--text-primary);
   font-family: var(--font-pixel);
   font-size: 13px;
   letter-spacing: 0.02em;
@@ -121,7 +77,7 @@ code {
 
 :focus-visible,
 [data-focus-visible] {
-  outline: 2px solid var(--mc-white);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -138,12 +94,12 @@ code {
 
 .pixel-button {
   align-items: center;
-  background: var(--widget);
-  border: 1px solid var(--edge-black);
+  background: var(--control-face);
+  border: 1px solid var(--edge-hard);
   box-shadow:
-    inset 1px 1px 0 var(--widget-light),
-    inset -1px -1px 0 var(--widget-dark);
-  color: var(--text);
+    inset 1px 1px 0 var(--control-bevel-light),
+    inset -1px -1px 0 var(--control-bevel-dark);
+  color: var(--text-primary);
   display: inline-flex;
   height: 28px;
   justify-content: center;
@@ -160,24 +116,30 @@ code {
 
 .pixel-button[data-hovered],
 .pixel-button:hover {
-  background: #5b6a5b;
-  color: var(--mc-white);
+  background: var(--control-face-hover);
+  color: var(--control-text-hover);
 }
 
-.pixel-button[data-pressed] {
+.pixel-button[data-pressed],
+.pixel-button[data-selected] {
   box-shadow:
-    inset 1px 1px 0 var(--widget-dark),
-    inset -1px -1px 0 var(--widget-light);
+    inset 1px 1px 0 var(--control-bevel-dark),
+    inset -1px -1px 0 var(--control-bevel-light);
+}
+
+.pixel-button[data-selected] {
+  background: var(--control-face-hover);
+  color: var(--control-text-hover);
 }
 
 .pixel-field {
   align-items: center;
-  background: #08080a;
-  border: 1px solid var(--edge-black);
+  background: var(--surface-input);
+  border: 1px solid var(--edge-hard);
   box-shadow:
-    inset 1px 1px 0 #303035,
-    inset -1px -1px 0 #000000;
-  color: var(--text);
+    inset 1px 1px 0 var(--input-bevel-inner),
+    inset -1px -1px 0 var(--input-bevel-outer);
+  color: var(--text-primary);
   display: flex;
   gap: 6px;
   height: 28px;
@@ -185,7 +147,7 @@ code {
 }
 
 .pixel-field:focus-within {
-  border-color: var(--mc-white);
+  border-color: var(--focus-ring);
 }
 
 .pixel-field svg {
@@ -198,7 +160,7 @@ code {
 .pixel-field input {
   background: none;
   border: 0;
-  color: var(--text);
+  color: var(--text-primary);
   flex: 1;
   font-size: 12px;
   min-width: 0;
@@ -215,9 +177,9 @@ code {
 }
 
 .pixel-badge {
-  background: rgba(255, 170, 0, 0.16);
-  border: 1px solid var(--mc-gold);
-  color: var(--mc-gold);
+  background: var(--accent-notice-fill);
+  border: 1px solid var(--accent-notice);
+  color: var(--accent-notice);
   display: inline-block;
   font-size: 10px;
   padding: 1px 4px;
@@ -226,9 +188,9 @@ code {
 
 .panel-bar {
   align-items: center;
-  background: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid var(--edge-black);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  background: var(--surface-toolbar);
+  border-bottom: 1px solid var(--edge-hard);
+  box-shadow: inset 0 1px 0 var(--surface-toolbar-highlight);
   display: flex;
   flex: none;
   gap: 8px;
@@ -238,10 +200,10 @@ code {
 }
 
 .panel-bar__title {
-  color: var(--mc-white);
+  color: var(--text-strong);
   font-size: 14px;
   font-weight: 400;
-  text-shadow: var(--pixel-shadow-lg);
+  text-shadow: var(--pixel-shadow-strong);
 }
 
 .panel-bar__count {
@@ -250,7 +212,7 @@ code {
 }
 
 .panel-empty {
-  color: var(--text-dim);
+  color: var(--text-muted);
   display: grid;
   font-size: 12px;
   gap: 6px;
@@ -259,7 +221,7 @@ code {
 }
 
 .panel-empty strong {
-  color: var(--mc-yellow);
+  color: var(--accent-highlight);
   font-weight: 400;
 }
 
@@ -269,20 +231,20 @@ code {
 }
 
 ::-webkit-scrollbar-track {
-  background: #08080a;
-  border: 1px solid var(--edge-black);
+  background: var(--surface-scroll-track);
+  border: 1px solid var(--edge-hard);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--widget);
-  border: 1px solid var(--edge-black);
+  background: var(--control-face);
+  border: 1px solid var(--edge-hard);
   box-shadow:
-    inset 1px 1px 0 var(--widget-light),
-    inset -1px -1px 0 var(--widget-dark);
+    inset 1px 1px 0 var(--control-bevel-light),
+    inset -1px -1px 0 var(--control-bevel-dark);
 }
 
 ::-webkit-scrollbar-corner {
-  background: #08080a;
+  background: var(--surface-scroll-track);
 }
 
 /* ------------------------------------------------------------ app shell */
@@ -301,19 +263,19 @@ code {
 
 .chapter-rail,
 .inspector-rail {
-  background: var(--panel);
+  background: var(--surface-panel);
   min-height: 0;
   overflow: hidden;
 }
 
 .chapter-rail {
-  border-right: 1px solid var(--edge-black);
-  box-shadow: inset -1px 0 0 var(--edge-dim);
+  border-right: 1px solid var(--edge-hard);
+  box-shadow: inset -1px 0 0 var(--edge-soft);
 }
 
 .inspector-rail {
-  border-left: 1px solid var(--edge-black);
-  box-shadow: inset 1px 0 0 var(--edge-dim);
+  border-left: 1px solid var(--edge-hard);
+  box-shadow: inset 1px 0 0 var(--edge-soft);
 }
 
 .canvas-column {
@@ -328,7 +290,7 @@ code {
 }
 
 .fatal-state {
-  color: var(--mc-red);
+  color: var(--accent-danger);
   display: grid;
   gap: 8px;
   padding: 32px;
@@ -343,23 +305,23 @@ code {
 
 .boot-status,
 .boot-error {
-  color: var(--text-dim);
+  color: var(--text-muted);
   font-family: var(--font-pixel);
   padding: 24px;
   text-align: center;
 }
 
 .boot-error {
-  color: var(--mc-red);
+  color: var(--accent-danger);
 }
 
 /* -------------------------------------------------------- quest book bar */
 
 .book-bar {
   align-items: center;
-  background: var(--panel);
-  border-bottom: 1px solid var(--edge-black);
-  box-shadow: inset 0 -1px 0 var(--edge-dim);
+  background: var(--surface-panel);
+  border-bottom: 1px solid var(--edge-hard);
+  box-shadow: inset 0 -1px 0 var(--edge-soft);
   display: flex;
   gap: 10px;
   height: 40px;
@@ -374,10 +336,10 @@ code {
 }
 
 .book-title__name {
-  color: var(--mc-white);
+  color: var(--text-strong);
   flex: none;
   font-size: 15px;
-  text-shadow: var(--pixel-shadow-lg);
+  text-shadow: var(--pixel-shadow-strong);
 }
 
 .book-title__path {
@@ -389,7 +351,7 @@ code {
 }
 
 .book-totals {
-  color: var(--text-dim);
+  color: var(--text-muted);
   display: flex;
   font-size: 11px;
   gap: 12px;
@@ -398,7 +360,7 @@ code {
 }
 
 .book-totals b {
-  color: var(--mc-green);
+  color: var(--accent-link);
   font-weight: 400;
 }
 
@@ -409,19 +371,14 @@ code {
   gap: 5px;
 }
 
-.lang-picker__tag {
-  color: var(--text-faint);
-  font-size: 11px;
-}
-
 .lang-picker select {
   appearance: none;
-  background: var(--widget);
-  border: 1px solid var(--edge-black);
+  background: var(--control-face);
+  border: 1px solid var(--edge-hard);
   box-shadow:
-    inset 1px 1px 0 var(--widget-light),
-    inset -1px -1px 0 var(--widget-dark);
-  color: var(--text);
+    inset 1px 1px 0 var(--control-bevel-light),
+    inset -1px -1px 0 var(--control-bevel-dark);
+  color: var(--text-primary);
   font-size: 11px;
   height: 26px;
   padding: 0 20px 0 6px;
@@ -433,12 +390,17 @@ code {
 }
 
 .lang-picker::after {
-  color: var(--text-dim);
+  color: var(--text-muted);
   content: '▼';
   font-size: 8px;
   pointer-events: none;
   position: absolute;
   right: 7px;
+}
+
+.lang-picker__tag {
+  color: var(--text-faint);
+  font-size: 11px;
 }
 
 /* -------------------------------------------------------- chapter panel */
@@ -468,7 +430,7 @@ code {
 
 .chapter-group__title {
   align-items: center;
-  color: var(--mc-white);
+  color: var(--text-strong);
   display: flex;
   font-size: 13px;
   font-weight: 400;
@@ -491,7 +453,7 @@ code {
   align-items: center;
   background: none;
   border: 1px solid transparent;
-  color: var(--mc-green);
+  color: var(--accent-link);
   display: grid;
   gap: 7px;
   grid-template-columns: 18px minmax(0, 1fr) auto;
@@ -513,19 +475,19 @@ code {
 }
 
 .chapter-row:hover {
-  background: rgba(85, 255, 85, 0.09);
-  border-color: rgba(85, 255, 85, 0.35);
-  color: var(--mc-white);
+  background: var(--accent-link-fill);
+  border-color: var(--accent-link-edge);
+  color: var(--text-strong);
 }
 
 .chapter-row[aria-current='page'] {
-  background: rgba(85, 255, 255, 0.12);
-  border-color: rgba(85, 255, 255, 0.55);
-  color: var(--mc-aqua);
+  background: var(--accent-info-fill);
+  border-color: var(--accent-info-edge);
+  color: var(--accent-info);
 }
 
 .chapter-row[aria-current='page'] .chapter-row__count {
-  color: var(--mc-aqua);
+  color: var(--accent-info);
 }
 
 /* ------------------------------------------------------------ quest view */
@@ -540,9 +502,9 @@ code {
 
 .chapter-bar {
   align-items: center;
-  background: var(--panel);
-  border-bottom: 1px solid var(--edge-black);
-  box-shadow: inset 0 -1px 0 var(--edge-dim);
+  background: var(--surface-panel);
+  border-bottom: 1px solid var(--edge-hard);
+  box-shadow: inset 0 -1px 0 var(--edge-soft);
   display: flex;
   flex: none;
   gap: 9px;
@@ -558,12 +520,12 @@ code {
 }
 
 .chapter-bar__title {
-  color: var(--mc-white);
+  color: var(--text-strong);
   font-size: 15px;
   font-weight: 400;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: var(--pixel-shadow-lg);
+  text-shadow: var(--pixel-shadow-strong);
   white-space: nowrap;
 }
 
@@ -581,17 +543,17 @@ code {
 }
 
 .graph-search__status {
-  color: var(--mc-yellow);
+  color: var(--accent-highlight);
   font-size: 10px;
   white-space: nowrap;
 }
 
 .graph-search__status.is-empty {
-  color: var(--mc-red);
+  color: var(--accent-danger);
 }
 
 .graph-canvas {
-  background: rgba(0, 0, 0, 0.24);
+  background: var(--surface-canvas);
   flex: 1;
   min-height: 0;
   outline-offset: -3px;
@@ -609,11 +571,11 @@ code {
 
 .status-bar {
   align-items: center;
-  background: rgba(6, 6, 8, 0.82);
-  border-top: 1px solid var(--edge-black);
+  background: var(--surface-status);
+  border-top: 1px solid var(--edge-hard);
   bottom: 0;
-  box-shadow: inset 0 1px 0 var(--edge-dim);
-  color: var(--mc-gray);
+  box-shadow: inset 0 1px 0 var(--edge-soft);
+  color: var(--text-muted);
   display: flex;
   font-size: 11px;
   gap: 14px;
@@ -625,7 +587,7 @@ code {
 }
 
 .status-bar__cell {
-  color: var(--mc-gray);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
@@ -687,8 +649,8 @@ code {
 /* ------------------------------------------------------------ quest node */
 
 .quest-node {
-  --frame: #4f9c46;
-  --face: rgba(34, 36, 32, 0.92);
+  --frame: var(--node-frame);
+  --face: var(--node-face);
   --plate: transparent;
   --plate-edge: transparent;
 
@@ -772,44 +734,44 @@ code {
 }
 
 .quest-node.relation-prerequisite {
-  --frame: var(--mc-green);
-  --plate: rgba(30, 138, 36, 0.28);
-  --plate-edge: rgba(85, 255, 85, 0.55);
+  --frame: var(--node-frame-prerequisite);
+  --plate: var(--node-plate-prerequisite);
+  --plate-edge: var(--node-plate-edge-prerequisite);
 }
 
 .quest-node.relation-dependent {
-  --frame: var(--mc-gold);
-  --plate: rgba(255, 170, 0, 0.18);
-  --plate-edge: rgba(255, 170, 0, 0.5);
+  --frame: var(--node-frame-dependent);
+  --plate: var(--node-plate-dependent);
+  --plate-edge: var(--node-plate-edge-dependent);
 }
 
 .quest-node.relation-selected {
-  --frame: var(--mc-white);
-  --face: #45454c;
-  --plate: rgba(40, 74, 186, 0.6);
-  --plate-edge: #90b0ff;
+  --frame: var(--node-frame-selected);
+  --face: var(--node-face-selected);
+  --plate: var(--node-plate-selected);
+  --plate-edge: var(--node-plate-edge-selected);
 }
 
 .quest-node.has-diagnostic {
-  --frame: var(--mc-red);
+  --frame: var(--node-frame-diagnostic);
 }
 
 .quest-node.has-diagnostic.relation-selected {
-  --plate: rgba(160, 32, 32, 0.55);
-  --plate-edge: #ff8a8a;
+  --plate: var(--node-plate-diagnostic);
+  --plate-edge: var(--node-plate-edge-diagnostic);
 }
 
 .quest-node:hover {
-  --frame: var(--mc-white);
+  --frame: var(--node-frame-hover);
 }
 
 .quest-node.is-dimmed {
-  opacity: 0.34;
+  opacity: var(--node-dimmed-opacity);
 }
 
 .quest-node__mark {
   align-items: center;
-  border: 1px solid var(--edge-black);
+  border: 1px solid var(--edge-hard);
   display: flex;
   font-size: 10px;
   height: 14px;
@@ -820,22 +782,22 @@ code {
 }
 
 .quest-node__mark--optional {
-  background: #4a3a10;
-  color: var(--mc-gold);
+  background: var(--mark-optional-face);
+  color: var(--mark-optional-text);
   right: -5px;
   top: -5px;
 }
 
 .quest-node__mark--diagnostic {
-  background: #4a1414;
+  background: var(--mark-diagnostic-face);
   bottom: -5px;
-  color: var(--mc-red);
+  color: var(--mark-diagnostic-text);
   right: -5px;
 }
 
 .quest-tip {
-  background: var(--panel-solid);
-  border: 1px solid var(--edge-light);
+  background: var(--surface-panel-solid);
+  border: 1px solid var(--edge-strong);
   bottom: calc(100% + 9px);
   display: none;
   gap: 2px;
@@ -855,17 +817,17 @@ code {
 }
 
 .quest-tip__title {
-  color: var(--mc-white);
+  color: var(--text-strong);
   font-size: 12px;
 }
 
 .quest-tip__line {
-  color: var(--mc-gray);
+  color: var(--text-muted);
   font-size: 11px;
 }
 
 .quest-tip__optional {
-  color: var(--mc-gold);
+  color: var(--accent-notice);
   font-size: 11px;
 }
 
@@ -877,12 +839,12 @@ code {
 /* ----------------------------------------------------------- quest edges */
 
 .quest-edge__bed {
-  stroke: var(--edge-black);
+  stroke: var(--ribbon-bed);
   stroke-width: 10;
 }
 
 .quest-edge__rail {
-  stroke: var(--edge-rail, #2c7a31);
+  stroke: var(--edge-rail, var(--ribbon-rail));
   stroke-width: 8;
 }
 
@@ -892,48 +854,53 @@ code {
  * static geometry with no offset shift, so it never reads as motion.
  */
 .quest-edge__flow {
-  stroke: var(--edge-flow, #8ff07c);
+  stroke: var(--edge-flow, var(--ribbon-flow));
   stroke-dasharray: 4 4;
   stroke-linecap: butt;
   stroke-width: 4;
 }
 
 .quest-edge__arrow path {
-  stroke: var(--edge-flow, #8ff07c);
+  stroke: var(--edge-flow, var(--ribbon-flow));
   stroke-width: 2;
 }
 
 .react-flow__edge.relation-neutral {
-  --edge-flow: #7ade68;
-  --edge-rail: #256b2a;
+  --edge-flow: var(--ribbon-flow-neutral);
+  --edge-rail: var(--ribbon-rail-neutral);
 }
 
 .react-flow__edge.relation-prerequisite {
-  --edge-flow: var(--mc-green);
-  --edge-rail: #1e7a26;
+  --edge-flow: var(--ribbon-flow-prerequisite);
+  --edge-rail: var(--ribbon-rail-prerequisite);
 }
 
 .react-flow__edge.relation-dependent {
-  --edge-flow: var(--mc-gold);
-  --edge-rail: #6b4700;
+  --edge-flow: var(--ribbon-flow-dependent);
+  --edge-rail: var(--ribbon-rail-dependent);
 }
 
 .react-flow__edge.relation-muted {
-  opacity: 0.32;
+  opacity: var(--ribbon-muted-opacity);
 }
 
 .react-flow__edge.has-diagnostic {
-  --edge-flow: var(--mc-red);
-  --edge-rail: #5c1616;
+  --edge-flow: var(--ribbon-flow-diagnostic);
+  --edge-rail: var(--ribbon-rail-diagnostic);
 }
 
 /* -------------------------------------------------------- resource icons */
 
+/*
+ * The resource hue arrives as an inline --icon-hue, so the sprite colours have
+ * to be composed here rather than in the token layer: a var() inside a custom
+ * property is substituted where that property is declared.
+ */
 .resource-icon {
-  --sprite-body: hsl(var(--icon-hue) 34% 46%);
-  --sprite-dark: hsl(var(--icon-hue) 38% 24%);
-  --sprite-light: hsl(var(--icon-hue) 40% 66%);
-  --sprite-accent: hsl(var(--icon-accent-hue) 52% 54%);
+  --sprite-body: hsl(var(--icon-hue) var(--sprite-body-shade));
+  --sprite-dark: hsl(var(--icon-hue) var(--sprite-dark-shade));
+  --sprite-light: hsl(var(--icon-hue) var(--sprite-light-shade));
+  --sprite-accent: hsl(var(--icon-accent-hue) var(--sprite-accent-shade));
 
   display: inline-grid;
   flex: none;
@@ -981,26 +948,26 @@ code {
 }
 
 .sprite-detail {
-  fill: rgba(0, 0, 0, 0.4);
+  fill: var(--sprite-detail);
   transform: translateX(calc(var(--icon-variant) * 0.3px));
 }
 
 .sprite-trunk {
-  fill: #6b4a22;
+  fill: var(--sprite-trunk);
 }
 
 .sprite-check {
-  fill: var(--mc-green);
+  fill: var(--sprite-check);
 }
 
 /* Item slots reproduce the sunken bevel of an in-game inventory slot. */
 .item-slot {
   align-items: center;
-  background: var(--slot-fill);
-  border: 1px solid var(--edge-black);
+  background: var(--slot-face);
+  border: 1px solid var(--edge-hard);
   box-shadow:
-    inset 1px 1px 0 var(--slot-shadow),
-    inset -1px -1px 0 var(--slot-light);
+    inset 1px 1px 0 var(--slot-bevel-inner),
+    inset -1px -1px 0 var(--slot-bevel-outer);
   display: inline-flex;
   flex: none;
   height: 28px;
@@ -1016,12 +983,12 @@ code {
 
 .item-slot__count {
   bottom: 0;
-  color: var(--mc-white);
+  color: var(--text-strong);
   font-size: 10px;
   line-height: 1;
   position: absolute;
   right: 1px;
-  text-shadow: 1px 1px 0 #000000;
+  text-shadow: var(--pixel-shadow);
 }
 
 /* -------------------------------------------------------------- inspector */
@@ -1041,7 +1008,7 @@ code {
 }
 
 .tab-strip {
-  border-bottom: 1px solid var(--edge-black);
+  border-bottom: 1px solid var(--edge-hard);
   display: flex;
   flex: none;
   gap: 2px;
@@ -1049,11 +1016,11 @@ code {
 }
 
 .pixel-tab {
-  background: #1c1c20;
-  border: 1px solid var(--edge-black);
+  background: var(--tab-face);
+  border: 1px solid var(--edge-hard);
   border-bottom: 0;
-  box-shadow: inset 1px 1px 0 #3a3a40;
-  color: var(--text-dim);
+  box-shadow: inset 1px 1px 0 var(--tab-bevel);
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 12px;
   outline-offset: -2px;
@@ -1061,17 +1028,17 @@ code {
 }
 
 .pixel-tab[data-hovered] {
-  color: var(--mc-white);
+  color: var(--text-strong);
 }
 
 .pixel-tab[data-selected] {
-  background: #33333a;
-  color: var(--mc-white);
-  box-shadow: inset 1px 1px 0 #62626a;
+  background: var(--tab-face-selected);
+  box-shadow: inset 1px 1px 0 var(--tab-bevel-selected);
+  color: var(--text-strong);
 }
 
 .pixel-tab__count {
-  color: var(--mc-yellow);
+  color: var(--accent-highlight);
   font-size: 10px;
 }
 
@@ -1102,21 +1069,21 @@ code {
 }
 
 .quest-sheet__naming h2 {
-  color: var(--mc-white);
+  color: var(--text-strong);
   font-size: 15px;
   font-weight: 400;
-  text-shadow: var(--pixel-shadow-lg);
+  text-shadow: var(--pixel-shadow-strong);
 }
 
 .quest-sheet__subtitle {
-  color: var(--mc-yellow);
+  color: var(--accent-highlight);
   font-size: 11px;
 }
 
 .quest-sheet__body {
-  background: var(--panel-sunken);
-  border: 1px solid var(--edge-dim);
-  color: var(--text);
+  background: var(--surface-sunken);
+  border: 1px solid var(--edge-soft);
+  color: var(--text-primary);
   display: grid;
   font-size: 12px;
   gap: 4px;
@@ -1134,8 +1101,8 @@ code {
 
 .sheet-section h3 {
   align-items: center;
-  border-bottom: 1px solid var(--edge-dim);
-  color: var(--mc-white);
+  border-bottom: 1px solid var(--edge-soft);
+  color: var(--text-strong);
   display: flex;
   font-size: 12px;
   font-weight: 400;
@@ -1161,8 +1128,8 @@ code {
 
 .entry-row {
   align-items: center;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--edge-dim);
+  background: var(--surface-row);
+  border: 1px solid var(--edge-soft);
   display: flex;
   gap: 8px;
   padding: 3px 5px;
@@ -1174,7 +1141,7 @@ code {
 }
 
 .entry-row__label {
-  color: var(--text);
+  color: var(--text-primary);
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1195,7 +1162,7 @@ code {
   align-items: center;
   background: none;
   border: 1px solid transparent;
-  color: var(--mc-green);
+  color: var(--accent-link);
   display: flex;
   font-size: 12px;
   gap: 5px;
@@ -1210,13 +1177,13 @@ code {
 }
 
 .link-list button:hover {
-  background: rgba(85, 255, 85, 0.09);
-  border-color: rgba(85, 255, 85, 0.35);
-  color: var(--mc-white);
+  background: var(--accent-link-fill);
+  border-color: var(--accent-link-edge);
+  color: var(--text-strong);
 }
 
 .quest-sheet__stats {
-  border: 1px solid var(--edge-dim);
+  border: 1px solid var(--edge-soft);
   display: grid;
   gap: 1px 10px;
   grid-template-columns: 1fr 1fr;
@@ -1239,15 +1206,15 @@ code {
 }
 
 .quest-sheet__stats dd {
-  color: var(--mc-gray);
+  color: var(--text-muted);
   font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .diagnostic {
-  border: 1px solid var(--edge-dim);
-  border-left: 3px solid var(--mc-yellow);
+  border: 1px solid var(--edge-soft);
+  border-left: 3px solid var(--accent-warning);
   display: grid;
   gap: 3px;
   margin-bottom: 6px;
@@ -1255,14 +1222,14 @@ code {
 }
 
 .diagnostic strong {
-  color: var(--mc-yellow);
+  color: var(--accent-warning);
   font-size: 10px;
   font-weight: 400;
   text-transform: uppercase;
 }
 
 .diagnostic p {
-  color: var(--text);
+  color: var(--text-primary);
   font-size: 12px;
 }
 
@@ -1271,18 +1238,18 @@ code {
 }
 
 .diagnostic--error {
-  border-left-color: var(--mc-red);
+  border-left-color: var(--accent-danger);
 }
 
 .diagnostic--error strong {
-  color: var(--mc-red);
+  color: var(--accent-danger);
 }
 
 /* -------------------------------------------------- narrow-screen layout */
 
 .drawer-overlay,
 .sheet-overlay {
-  background: rgba(0, 0, 0, 0.72);
+  background: var(--surface-scrim);
   display: flex;
   inset: 0;
   position: fixed;
@@ -1294,15 +1261,15 @@ code {
 }
 
 .chapter-drawer {
-  background: var(--panel-solid);
-  border-right: 1px solid var(--edge-light);
+  background: var(--surface-panel-solid);
+  border-right: 1px solid var(--edge-strong);
   height: 100%;
   width: min(320px, 86vw);
 }
 
 .inspector-sheet {
-  background: var(--panel-solid);
-  border-top: 1px solid var(--edge-light);
+  background: var(--surface-panel-solid);
+  border-top: 1px solid var(--edge-strong);
   max-height: 84vh;
   width: 100%;
 }

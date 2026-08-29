@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from 'react-aria-components';
 import type { PreviewChapter, PreviewDiagnostic } from '../../types.ts';
 import { authoredPosition, questNodeSize, questRelations, shapeClass } from '../geometry.ts';
+import { usePreviewTheme } from '../use-preview-theme.ts';
 import { DomainIcon } from './DomainIcon.tsx';
 import { QuestEdge, type QuestFlowEdge } from './QuestEdge.tsx';
 import { type QuestFlowNode, QuestNode } from './QuestNode.tsx';
@@ -58,6 +59,7 @@ function QuestGraphInner({
   const [instance, setInstance] = useState<ReactFlowInstance<QuestFlowNode, QuestFlowEdge>>();
   const [query, setQuery] = useState('');
   const [zoom, setZoom] = useState(1);
+  const { theme } = usePreviewTheme();
   const [focusedId, setFocusedId] = useState(selectedQuestId ?? chapter.quests[0]?.id);
   const [focusPathId, setFocusPathId] = useState<string>();
   const [hoveredId, setHoveredId] = useState<string>();
@@ -319,7 +321,7 @@ function QuestGraphInner({
       >
         <ReactFlow<QuestFlowNode, QuestFlowEdge>
           {...GRAPH_INTERACTION_PROPS}
-          colorMode="dark"
+          colorMode={theme}
           disableKeyboardA11y
           edgeTypes={edgeTypes}
           edges={edges}

@@ -68,6 +68,7 @@ describe('packaged browser preview', () => {
     expect(contents).toContain('package/dist/index.mjs');
     expect(contents).toContain('package/dist/preview/app.js');
     expect(contents).toContain('package/dist/preview/app.css');
+    expect(contents).toContain('package/dist/preview/theme.js');
     expect(contents).not.toContain('package/src/');
 
     await writeFile(join(installDirectory, 'package.json'), '{"private":true}');
@@ -83,15 +84,17 @@ describe('packaged browser preview', () => {
     });
     try {
       const url = await waitForUrl(child);
-      const [page, javascript, stylesheet, preview] = await Promise.all([
+      const [page, javascript, stylesheet, bootstrap, preview] = await Promise.all([
         fetch(url),
         fetch(new URL('/assets/app.js', url)),
         fetch(new URL('/assets/app.css', url)),
+        fetch(new URL('/assets/theme.js', url)),
         fetch(new URL('/preview.json', url)),
       ]);
       expect(page.status).toBe(200);
       expect(javascript.status).toBe(200);
       expect(stylesheet.status).toBe(200);
+      expect(bootstrap.status).toBe(200);
       expect(await stylesheet.text()).toContain('--mc-green: #55ff55');
       expect(await preview.text()).toContain('Packaged Quest');
     } finally {

@@ -112,6 +112,8 @@ questspec serve <quest-directory> [--locale <locale>] [--port <port>]
 
 `serve` reads an FTB Quests persistence directory directly and starts a read-only preview on `127.0.0.1`. The browser keeps chapter grouping, available localization, authored quest positions and shapes, dependencies, and task/reward context visible without requiring QuestSpec YAML or launching Minecraft. Use `--locale` to choose the initial language and `--port` when a stable loopback port is useful.
 
+The preview ships dark and light themes of the same game-interface presentation. It follows the operating-system colour-scheme preference until the header switch is used, then remembers that explicit choice across reloads.
+
 This is structural analysis, not a simulation of FTB Quests runtime unlocks or player progression. Reachability does not claim that a quest is startable or unlockable: dependency requirements, thresholds, optional state, branch exclusions, tasks, rewards, team state, and other runtime effects are outside this graph contract. Cycles and missing dependency endpoints still produce a report so the valid structural portion can be inspected, but the command exits with status 1.
 
 For machine-readable reachability, use `questspec analyze quests.yml --from foundations.first_log --max-depth 2 --json`; the JSON envelope contains the absolute source, target profile, validity, partial state, structural summary, direction, and the complete query result.

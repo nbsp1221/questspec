@@ -37,15 +37,17 @@ export async function startPreviewServer(
   if (preview.stats.chapters === 0) {
     throw new Error(`questspec serve: no readable FTB Quests chapters found in ${root}`);
   }
-  const [javascript, stylesheet] = await Promise.all([
+  const [javascript, stylesheet, themeBootstrap] = await Promise.all([
     loadPreviewAsset('app.js', 'text/javascript; charset=utf-8'),
     loadPreviewAsset('app.css', 'text/css; charset=utf-8'),
+    loadPreviewAsset('theme.js', 'text/javascript; charset=utf-8'),
   ]);
   const page = renderPreviewPage(preview);
   const previewJson = Buffer.from(JSON.stringify(preview));
   const assets = new Map<string, PreviewAsset>([
     ['/assets/app.css', stylesheet],
     ['/assets/app.js', javascript],
+    ['/assets/theme.js', themeBootstrap],
   ]);
   const server = createServer((request, response) => {
     const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;

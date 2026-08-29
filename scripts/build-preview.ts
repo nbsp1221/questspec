@@ -9,8 +9,11 @@ await mkdir(outputDirectory, { recursive: true });
 await build({
   bundle: true,
   define: { 'process.env.NODE_ENV': '"production"' },
-  entryNames: 'app',
-  entryPoints: ['src/preview/client/main.tsx'],
+  entryNames: '[name]',
+  entryPoints: {
+    app: 'src/preview/client/main.tsx',
+    theme: 'src/preview/client/theme-bootstrap.ts',
+  },
   format: 'iife',
   legalComments: 'eof',
   logLevel: 'info',
