@@ -3,10 +3,10 @@
  *
  * The preview imitates the look of the in-game FTB Quests screen: translucent
  * black GUI panels with hard one-pixel edges, bitmap-style text with a black
- * drop shadow, item-slot bevels, and green dependency ribbons drawn over a
- * flat dim backdrop. Every fill is a flat colour, every measurement is a whole
- * pixel, and nothing is animated, blurred, glowed, or graded, because in-game
- * GUI art has none of that either.
+ * drop shadow, item-slot bevels, and green segmented dependency ribbons drawn
+ * over a flat dim backdrop. Every fill is a flat colour, every measurement is a
+ * whole pixel, and nothing is animated, blurred, glowed, or graded, because
+ * in-game GUI art has none of that either.
  */
 
 :root {
@@ -886,8 +886,15 @@ code {
   stroke-width: 8;
 }
 
+/*
+ * The in-game connector art is a repeated block, so the bright inner ribbon is
+ * cut into square segments over the continuous dark rail. The dash pattern is
+ * static geometry with no offset shift, so it never reads as motion.
+ */
 .quest-edge__flow {
   stroke: var(--edge-flow, #8ff07c);
+  stroke-dasharray: 4 4;
+  stroke-linecap: butt;
   stroke-width: 4;
 }
 

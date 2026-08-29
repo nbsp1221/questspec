@@ -140,9 +140,19 @@ describe('preview stylesheet restraint', () => {
   it('authors no animation, blur, glow, or filter treatment', () => {
     expect(stylesheet).not.toMatch(/@keyframes/u);
     expect(stylesheet).not.toMatch(/\banimation\b/u);
+    expect(stylesheet).not.toMatch(/\btransition\b/u);
     expect(stylesheet).not.toMatch(/\bfilter\s*:/u);
     expect(stylesheet).not.toMatch(/\bblur\(/u);
-    expect(stylesheet).not.toMatch(/stroke-dasharray/u);
+  });
+
+  /*
+   * A static dash pattern is connector geometry, not motion: the in-game
+   * connector art is a repeated block. Only a dash offset could shift it, so
+   * the offset property stays forbidden while the pattern itself is allowed.
+   */
+  it('allows a static dependency ribbon dash pattern but no dash offset', () => {
+    expect(stylesheet).toMatch(/stroke-dasharray/u);
+    expect(stylesheet).not.toMatch(/stroke-dashoffset/u);
   });
 
   it('keeps every authored shadow hard-edged with a zero blur radius', () => {
