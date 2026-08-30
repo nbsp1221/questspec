@@ -18,6 +18,8 @@ export type {
 } from './types.ts';
 
 export interface QuestPreviewSource {
+  defaultQuestShape: string;
+  dependencyOwners: Map<string, string>;
   diagnostics: PreviewDiagnostic[];
   directory: string;
   fallbackLocale: string;
@@ -43,12 +45,15 @@ export function buildQuestPreviewSource(
   const rawChapters: RawChapter[] = [];
   const groupValues: RawGroup[] = [];
   const knownObjectIds = new Set<string>();
+  const dependencyOwners = new Map<string, string>();
+  let defaultQuestShape = 'circle';
   let fallbackLocale = 'en_us';
 
   for (const [path, source] of files) {
     if (path === 'data.snbt') {
       const root = parseFile(path, source, diagnostics);
       fallbackLocale = text(root?.fallback_locale)?.toLowerCase() || fallbackLocale;
+      defaultQuestShape = text(root?.default_quest_shape) || defaultQuestShape;
     } else if (path === 'chapter_groups.snbt') {
       const root = parseFile(path, source, diagnostics);
       const groups = list(root?.chapter_groups);
@@ -65,7 +70,7 @@ export function buildQuestPreviewSource(
       const value = parseFile(path, source, diagnostics);
       if (value !== undefined) {
         rawChapters.push({ file: path, value });
-        collectQuestObjectIds(value, knownObjectIds);
+        collectQuestObjectIds(value, knownObjectIds, dependencyOwners);
       }
     }
   }
@@ -82,9 +87,18 @@ export function buildQuestPreviewSource(
     translations.set('source', []);
   }
 
-  const structural = localizePreview(rawChapters, groupValues, {}, []);
+  const structural = localizePreview({
+    defaultQuestShape,
+    dependencyOwners,
+    diagnostics: [],
+    rawChapters,
+    rawGroups: groupValues,
+    translations: {},
+  });
   const quests = structural.chapters.flatMap((chapter) => chapter.quests);
   return {
+    defaultQuestShape,
+    dependencyOwners,
     diagnostics: deduplicateDiagnostics(diagnostics),
     directory,
     fallbackLocale,
@@ -146,7 +160,14 @@ function localizedPreview(source: QuestPreviewSource, selectedLocale: string): L
           ...fallback,
           ...readTranslationTable(source.translations, selectedLocale, diagnostics),
         };
-  const locale = localizePreview(source.rawChapters, source.groupValues, selected, diagnostics);
+  const locale = localizePreview({
+    defaultQuestShape: source.defaultQuestShape,
+    dependencyOwners: source.dependencyOwners,
+    diagnostics,
+    rawChapters: source.rawChapters,
+    rawGroups: source.groupValues,
+    translations: selected,
+  });
   validateDependencies(locale, source.knownObjectIds, diagnostics);
   const result = {
     diagnostics: deduplicateDiagnostics(diagnostics),
@@ -179,17 +200,25 @@ export function buildQuestPreview(
   return buildQuestPreviewForLocale(buildQuestPreviewSource(directory, files), preferredLocale);
 }
 
-function collectQuestObjectIds(chapter: Record<string, unknown>, ids: Set<string>): void {
+function collectQuestObjectIds(
+  chapter: Record<string, unknown>,
+  ids: Set<string>,
+  dependencyOwners: Map<string, string>,
+): void {
   for (const candidate of list(chapter.quests)) {
     const quest = record(candidate);
     const questId = text(quest?.id);
     if (questId !== undefined) {
       ids.add(questId);
+      dependencyOwners.set(questId, questId);
     }
     for (const child of [...list(quest?.tasks), ...list(quest?.rewards)]) {
       const childId = text(record(child)?.id);
       if (childId !== undefined) {
         ids.add(childId);
+        if (questId !== undefined) {
+          dependencyOwners.set(childId, questId);
+        }
       }
     }
   }

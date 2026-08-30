@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import postcss, { type Declaration, type Root } from 'postcss';
 import { describe, expect, it } from 'vitest';
 import { startPreviewServer } from '../apps/cli/src/preview/server.ts';
+import { createQuestFlowEdges } from '../apps/preview/src/quest-flow-model.ts';
 import { readSnbtDirectory } from '../packages/core/src/filesystem/read-directory.ts';
 import { type QuestPreview, buildQuestPreview } from '../packages/core/src/preview/model.ts';
 
@@ -110,8 +111,60 @@ describe('FTB Quests browser preview', () => {
 
     const preview = buildQuestPreview(root, await readSnbtDirectory(root));
 
-    expect(preview.chapter?.quests[1]?.dependencies).toEqual(['T1']);
+    expect(preview.chapter?.quests[1]?.dependencies).toEqual(['Q1']);
+    expect(preview.questIndex.Q1).toMatchObject({ chapterId: 'B', title: 'Punch a Tree' });
+    if (preview.chapter === undefined) {
+      throw new Error('Expected the fixture chapter to be selected.');
+    }
+    expect(
+      createQuestFlowEdges({ activeQuestId: undefined, chapter: preview.chapter }),
+    ).toMatchObject([{ source: 'Q1', target: 'Q2' }]);
     expect(preview.diagnostics).toEqual([]);
+  });
+
+  it('applies FTB defaults and canonical entry metadata while localizing the model', async () => {
+    const root = await fixture();
+    await writeFile(join(root, 'data.snbt'), '{ version: 13, default_quest_shape: "hexagon" }');
+    await writeFile(
+      join(root, 'chapters', 'start.snbt'),
+      `{
+        id: "B"
+        group: "A"
+        filename: "start"
+        default_hide_dependency_lines: true
+        quests: [
+          { id: "Q1", x: 0.0d, y: 1.0d, tasks: [{ id: "T1", type: "kill", entity: "minecraft:zombie", value: 7 }] }
+          { id: "Q2", x: 2.0d, y: 1.0d, dependencies: ["Q1"], hide_dependency_lines: false, tasks: [{ id: "T2", type: "stat", stat: "minecraft:mined:minecraft:stone", value: 12 }], rewards: [{ id: "R1", type: "xp_levels", xp_levels: 5 }, { id: "R2", type: "xp", xp: 25 }] }
+        ]
+      }`,
+    );
+    await writeFile(
+      join(root, 'lang', 'en_us.snbt'),
+      `{
+        task.T1.title: "Zombie Hunter"
+        task.T2.title: "Stone Miner"
+        reward.R2.title: "Experience Bundle"
+      }`,
+    );
+
+    const preview = buildQuestPreview(root, await readSnbtDirectory(root));
+
+    expect(preview.chapter?.quests).toMatchObject([
+      {
+        hideDependencyLines: true,
+        shape: 'hexagon',
+        tasks: [{ count: 7, label: 'Zombie Hunter', type: 'kill' }],
+      },
+      {
+        hideDependencyLines: false,
+        rewards: [
+          { count: 5, label: '5 levels', type: 'xp_levels' },
+          { count: 25, label: 'Experience Bundle', type: 'xp' },
+        ],
+        shape: 'hexagon',
+        tasks: [{ count: 12, label: 'Stone Miner', type: 'stat' }],
+      },
+    ]);
   });
 
   it('serves a self-contained read-only UI on loopback without changing the input', async () => {

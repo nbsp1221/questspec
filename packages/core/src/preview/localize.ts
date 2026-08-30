@@ -28,12 +28,23 @@ export interface RawGroup {
   title?: string;
 }
 
-export function localizePreview(
-  rawChapters: RawChapter[],
-  rawGroups: RawGroup[],
-  translations: Record<string, string | string[]>,
-  diagnostics: PreviewDiagnostic[],
-): PreviewLocale {
+interface LocalizePreviewOptions {
+  defaultQuestShape: string;
+  dependencyOwners: ReadonlyMap<string, string>;
+  diagnostics: PreviewDiagnostic[];
+  rawChapters: RawChapter[];
+  rawGroups: RawGroup[];
+  translations: Record<string, string | string[]>;
+}
+
+export function localizePreview({
+  defaultQuestShape,
+  dependencyOwners,
+  diagnostics,
+  rawChapters,
+  rawGroups,
+  translations,
+}: LocalizePreviewOptions): PreviewLocale {
   const groups = rawGroups
     .map((group) => ({
       id: group.id,
@@ -53,7 +64,8 @@ export function localizePreview(
         localize(text(value.title), translations) ??
         translatedText(translations, `chapter.${id}.title`) ??
         humanize(filename);
-      const defaultShape = text(value.default_quest_shape) || 'circle';
+      const defaultShape = text(value.default_quest_shape) || defaultQuestShape;
+      const defaultHideDependencyLines = boolean(value.default_hide_dependency_lines) ?? false;
       const quests = list(value.quests).flatMap((candidate, questIndex) => {
         const quest = record(candidate);
         if (quest === undefined) {
@@ -65,8 +77,8 @@ export function localizePreview(
           return [];
         }
         const questId = text(quest.id) ?? `${id}-${questIndex + 1}`;
-        const tasks = decodeEntries(quest.tasks, translations);
-        const rewards = decodeEntries(quest.rewards, translations);
+        const tasks = decodeEntries(quest.tasks, translations, 'task');
+        const rewards = decodeEntries(quest.rewards, translations, 'reward');
         const icon =
           itemId(quest.icon) ??
           tasks.find((entry) => entry.icon)?.icon ??
@@ -82,9 +94,15 @@ export function localizePreview(
           [];
         return [
           {
-            dependencies: stringList(quest.dependencies),
+            dependencies: [
+              ...new Set(
+                stringList(quest.dependencies).map(
+                  (dependency) => dependencyOwners.get(dependency) ?? dependency,
+                ),
+              ),
+            ],
             description,
-            hideDependencyLines: boolean(quest.hide_dependency_lines) ?? false,
+            hideDependencyLines: boolean(quest.hide_dependency_lines) ?? defaultHideDependencyLines,
             icon,
             id: questId,
             optional: boolean(quest.optional) ?? false,
@@ -132,21 +150,52 @@ export function localizePreview(
 function decodeEntries(
   value: unknown,
   translations: Record<string, string | string[]>,
+  translationKind: 'reward' | 'task',
 ): PreviewEntry[] {
   return list(value).flatMap((candidate) => {
     const entry = record(candidate);
     if (entry === undefined) {
       return [];
     }
+    const id = text(entry.id);
     const type = text(entry.type) ?? 'unknown';
     const icon = itemId(entry.icon) ?? itemId(entry.item) ?? itemId(entry.entity);
-    const title = localize(text(entry.title), translations);
-    const label = title ?? entryLabel(type, icon, entry);
-    return [{ count: number(entry.count), icon, label, type }];
+    const amount = entryAmount(type, entry);
+    const title =
+      localize(text(entry.title), translations) ??
+      (id === undefined
+        ? undefined
+        : translatedText(translations, `${translationKind}.${id}.title`));
+    const label = title ?? entryLabel(type, icon, entry, amount);
+    return [{ count: amount, icon, label, type }];
   });
 }
 
-function entryLabel(type: string, icon: string | undefined, entry: RecordValue): string {
+function entryAmount(type: string, entry: RecordValue): number | undefined {
+  if (type === 'kill' || type === 'stat') {
+    return number(entry.value);
+  }
+  if (type === 'xp') {
+    return number(entry.xp);
+  }
+  if (type === 'xp_levels') {
+    return number(entry.xp_levels);
+  }
+  return number(entry.count);
+}
+
+function entryLabel(
+  type: string,
+  icon: string | undefined,
+  entry: RecordValue,
+  amount: number | undefined,
+): string {
+  if (type === 'xp' && amount !== undefined) {
+    return `${amount} XP`;
+  }
+  if (type === 'xp_levels' && amount !== undefined) {
+    return `${amount} levels`;
+  }
   if (icon !== undefined) {
     return humanizeResource(icon);
   }
@@ -159,12 +208,6 @@ function entryLabel(type: string, icon: string | undefined, entry: RecordValue):
     text(entry.loot_table);
   if (reference !== undefined) {
     return humanizeResource(reference);
-  }
-  if (type === 'xp' && number(entry.xp) !== undefined) {
-    return `${number(entry.xp)} XP`;
-  }
-  if (type === 'xp_levels' && number(entry.levels) !== undefined) {
-    return `${number(entry.levels)} levels`;
   }
   return humanize(type);
 }

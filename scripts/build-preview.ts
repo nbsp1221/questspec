@@ -3,6 +3,7 @@ import { mkdir, rm } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import tailwindPackage from '@tailwindcss/cli/package.json' with { type: 'json' };
 import { build } from 'esbuild';
 
 const execute = promisify(execFile);
@@ -30,12 +31,14 @@ await build({
   target: ['chrome120', 'firefox121', 'safari17'],
 });
 
-const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+const tailwindPackageDirectory = dirname(
+  fileURLToPath(import.meta.resolve('@tailwindcss/cli/package.json')),
+);
+const tailwindExecutable = resolve(tailwindPackageDirectory, tailwindPackage.bin.tailwindcss);
 await execute(
-  pnpm,
+  process.execPath,
   [
-    'exec',
-    'tailwindcss',
+    tailwindExecutable,
     '--input',
     resolve(repositoryRoot, 'apps/preview/src/styles.css'),
     '--output',
