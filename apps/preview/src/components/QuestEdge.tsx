@@ -39,15 +39,15 @@ export function QuestEdge({
         <marker
           className="quest-edge__arrow"
           id={markerId}
-          markerHeight="10"
+          markerHeight="14"
           markerUnits="userSpaceOnUse"
-          markerWidth="10"
+          markerWidth="14"
           orient="auto"
-          refX="8"
-          refY="5"
-          viewBox="0 0 10 10"
+          refX="12"
+          refY="7"
+          viewBox="0 0 14 14"
         >
-          <path d="M1 1 8 5 1 9" fill="none" />
+          <path d="M1 1 12 7 1 13" fill="none" />
         </marker>
       </defs>
       <path

@@ -339,12 +339,12 @@
 
 .quest-edge__bed {
   stroke: var(--ribbon-bed);
-  stroke-width: 10;
+  stroke-width: 8;
 }
 
 .quest-edge__rail {
   stroke: var(--edge-rail, var(--ribbon-rail));
-  stroke-width: 8;
+  stroke-width: 6;
 }
 
 /*
@@ -361,6 +361,8 @@
 
 .quest-edge__arrow path {
   stroke: var(--edge-flow, var(--ribbon-flow));
+  stroke-linecap: round;
+  stroke-linejoin: round;
   stroke-width: 2;
 }
 
