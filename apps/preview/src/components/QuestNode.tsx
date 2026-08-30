@@ -1,7 +1,7 @@
 import type { PreviewQuest } from '@questspec/core/preview/types';
-import type { FocusEvent, KeyboardEvent, MouseEvent } from 'react';
+import type { CSSProperties, FocusEvent, KeyboardEvent, MouseEvent } from 'react';
 import { Handle, type Node, type NodeProps, Position } from '@xyflow/react';
-import { type QuestRelation, shapeClass } from '../geometry.ts';
+import { type QuestRelation, resolveQuestShape, shapeClipPath } from '../geometry.ts';
 import { DomainIcon } from './DomainIcon.tsx';
 
 export interface QuestNodeData extends Record<string, unknown> {
@@ -53,8 +53,12 @@ export function QuestNode({ data }: NodeProps<QuestFlowNode>): React.JSX.Element
 
 export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.Element {
   const { quest } = data;
+  const shape = resolveQuestShape(quest.shape);
+  const silhouette = shapeClipPath(shape);
   const optional = quest.optional ? ', optional' : '';
   const relationship = data.relation === 'neutral' ? '' : `, ${data.relation}`;
+  const style =
+    silhouette === undefined ? undefined : ({ '--silhouette': silhouette } as CSSProperties);
 
   const activate = (event: MouseEvent<HTMLButtonElement>): void => {
     event.stopPropagation();
@@ -78,7 +82,7 @@ export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.E
     <button
       aria-label={`${quest.title}${optional}${relationship}${data.diagnostic ? ', has diagnostic' : ''}`}
       aria-pressed={data.selected}
-      className={`nodrag nopan quest-node quest-node--${shapeClass(quest.shape)} relation-${data.relation}${data.dimmed ? ' is-dimmed' : ''}${data.diagnostic ? ' has-diagnostic' : ''}`}
+      className={`nodrag nopan quest-node quest-node--${shape} relation-${data.relation}${data.dimmed ? ' is-dimmed' : ''}${data.diagnostic ? ' has-diagnostic' : ''}`}
       data-quest-id={quest.id}
       onBlur={onBlur}
       onClick={activate}
@@ -86,6 +90,7 @@ export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.E
       onKeyDown={onKeyDown}
       onPointerEnter={() => data.onHover(quest.id)}
       onPointerLeave={() => data.onHover(undefined)}
+      style={style}
       tabIndex={data.focused ? 0 : -1}
       title={quest.title}
       type="button"

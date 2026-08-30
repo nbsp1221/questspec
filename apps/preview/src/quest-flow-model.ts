@@ -2,7 +2,7 @@ import type { PreviewChapter, PreviewDiagnostic } from '@questspec/core/preview/
 import type { CSSProperties } from 'react';
 import type { QuestFlowEdge } from './components/QuestEdge.tsx';
 import type { QuestFlowNode } from './components/QuestNode.tsx';
-import { authoredPosition, questNodeSize, questRelations, shapeClass } from './geometry.ts';
+import { authoredPosition, questNodeSize, questRelations, resolveQuestShape } from './geometry.ts';
 
 interface QuestFlowCallbacks {
   onActivate: (id: string) => void;
@@ -81,9 +81,9 @@ export function createQuestFlowElements({
               ariaLabel: `${source.title} is a prerequisite of ${quest.title}`,
               className: relationClass(activeQuestId, quest.id, dependency),
               data: {
-                sourceShape: shapeClass(source.shape),
+                sourceShape: resolveQuestShape(source.shape),
                 sourceSize: questNodeSize(source.size),
-                targetShape: shapeClass(quest.shape),
+                targetShape: resolveQuestShape(quest.shape),
                 targetSize: questNodeSize(quest.size),
               },
               id: `${dependency}->${quest.id}`,

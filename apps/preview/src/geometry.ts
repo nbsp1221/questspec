@@ -9,7 +9,118 @@ export interface GraphPoint {
 
 export type QuestRelation = 'dependent' | 'neutral' | 'prerequisite' | 'selected';
 
-export type QuestShape = 'circle' | 'diamond' | 'faceted' | 'frameless' | 'rounded' | 'square';
+/** Shape IDs shipped by FTB Quests 2101.1.33. Custom resource-pack IDs fall back to a circle. */
+export const FTB_QUEST_SHAPES = [
+  'circle',
+  'square',
+  'diamond',
+  'rsquare',
+  'pentagon',
+  'hexagon',
+  'octagon',
+  'heart',
+  'gear',
+  'none',
+] as const;
+
+export type QuestShape = (typeof FTB_QUEST_SHAPES)[number];
+
+type PolygonShape = Exclude<QuestShape, 'circle' | 'none' | 'rsquare'>;
+
+const QUEST_SHAPE_SET = new Set<string>(FTB_QUEST_SHAPES);
+
+/** Normalized web silhouettes shared by node clipping and dependency-line intersections. */
+const SHAPE_POLYGONS: Readonly<Record<PolygonShape, readonly (readonly [number, number])[]>> = {
+  diamond: [
+    [0, -1],
+    [1, 0],
+    [0, 1],
+    [-1, 0],
+  ],
+  gear: [
+    [-0.18, -1],
+    [0.18, -1],
+    [0.24, -0.75],
+    [0.48, -0.84],
+    [0.72, -0.6],
+    [0.62, -0.36],
+    [0.88, -0.28],
+    [0.88, 0],
+    [1, 0.18],
+    [0.82, 0.42],
+    [0.58, 0.38],
+    [0.66, 0.66],
+    [0.42, 0.84],
+    [0.18, 0.72],
+    [0.12, 1],
+    [-0.18, 1],
+    [-0.24, 0.75],
+    [-0.48, 0.84],
+    [-0.72, 0.6],
+    [-0.62, 0.36],
+    [-0.88, 0.28],
+    [-0.88, 0],
+    [-1, -0.18],
+    [-0.82, -0.42],
+    [-0.58, -0.38],
+    [-0.66, -0.66],
+    [-0.42, -0.84],
+    [-0.18, -0.72],
+  ],
+  heart: [
+    [0, 1],
+    [-0.2, 0.72],
+    [-0.48, 0.4],
+    [-0.76, 0.08],
+    [-0.94, -0.2],
+    [-1, -0.48],
+    [-0.9, -0.72],
+    [-0.68, -0.9],
+    [-0.4, -0.94],
+    [-0.16, -0.82],
+    [0, -0.62],
+    [0.16, -0.82],
+    [0.4, -0.94],
+    [0.68, -0.9],
+    [0.9, -0.72],
+    [1, -0.48],
+    [0.94, -0.2],
+    [0.76, 0.08],
+    [0.48, 0.4],
+    [0.2, 0.72],
+  ],
+  hexagon: [
+    [0, -1],
+    [1, -0.5],
+    [1, 0.5],
+    [0, 1],
+    [-1, 0.5],
+    [-1, -0.5],
+  ],
+  octagon: [
+    [-0.42, -1],
+    [0.42, -1],
+    [1, -0.42],
+    [1, 0.42],
+    [0.42, 1],
+    [-0.42, 1],
+    [-1, 0.42],
+    [-1, -0.42],
+  ],
+  pentagon: [
+    [0, -1],
+    [0.95, -0.31],
+    [0.59, 0.81],
+    [-0.59, 0.81],
+    [-0.95, -0.31],
+  ],
+  square: [
+    [-1, -1],
+    [1, -1],
+    [1, 1],
+    [-1, 1],
+  ],
+};
 
 export function authoredPosition(quest: Pick<PreviewQuest, 'x' | 'y'>): GraphPoint {
   return { x: quest.x * AUTHORED_GRID_SIZE, y: quest.y * AUTHORED_GRID_SIZE };
@@ -66,26 +177,21 @@ export function directionalQuest(
     .sort((left, right) => left.score - right.score)[0]?.quest;
 }
 
-export function shapeClass(shape: string): QuestShape {
+export function resolveQuestShape(shape: string): QuestShape {
   const normalized = shape.toLowerCase();
-  if (normalized === 'none' || normalized.includes('frameless')) {
-    return 'frameless';
+  return QUEST_SHAPE_SET.has(normalized) ? (normalized as QuestShape) : 'circle';
+}
+
+export function shapeClipPath(shape: QuestShape): string | undefined {
+  if (shape === 'circle' || shape === 'none') {
+    return undefined;
   }
-  if (normalized.includes('diamond') || normalized.includes('heart')) {
-    return 'diamond';
+  if (shape === 'rsquare') {
+    return 'inset(0 round 22%)';
   }
-  if (
-    normalized.includes('hexagon') ||
-    normalized.includes('octagon') ||
-    normalized.includes('pentagon') ||
-    normalized.includes('gear')
-  ) {
-    return 'faceted';
-  }
-  if (normalized.includes('square')) {
-    return normalized.startsWith('r') ? 'rounded' : 'square';
-  }
-  return 'circle';
+  return `polygon(${polygonFor(shape)
+    .map(([x, y]) => `${(x + 1) * 50}% ${(y + 1) * 50}%`)
+    .join(', ')})`;
 }
 
 export function previewViewportKey(locale: string, chapterId: string): string {
@@ -117,7 +223,7 @@ function clipFromCenter(
 ): GraphPoint {
   const direction = { x: toward.x - center.x, y: toward.y - center.y };
   const half = size / 2;
-  if (shape === 'circle' || shape === 'frameless') {
+  if (shape === 'circle' || shape === 'none') {
     const length = Math.hypot(direction.x, direction.y);
     return {
       x: center.x + (direction.x / length) * half,
@@ -156,33 +262,19 @@ function cross(left: GraphPoint, right: GraphPoint): number {
 }
 
 function polygonFor(
-  shape: Exclude<QuestShape, 'circle' | 'frameless'>,
+  shape: Exclude<QuestShape, 'circle' | 'none'>,
 ): readonly (readonly [number, number])[] {
-  switch (shape) {
-    case 'diamond':
-      return [
-        [0, -1],
-        [1, 0],
-        [0, 1],
-        [-1, 0],
-      ];
-    case 'faceted':
-      return [
-        [-0.38, -1],
-        [0.52, -0.86],
-        [1, -0.18],
-        [0.74, 0.78],
-        [0, 1],
-        [-0.82, 0.7],
-        [-1, -0.24],
-      ];
-    case 'rounded':
-    case 'square':
-      return [
-        [-1, -1],
-        [1, -1],
-        [1, 1],
-        [-1, 1],
-      ];
+  if (shape === 'rsquare') {
+    return [
+      [-0.56, -1],
+      [0.56, -1],
+      [1, -0.56],
+      [1, 0.56],
+      [0.56, 1],
+      [-0.56, 1],
+      [-1, 0.56],
+      [-1, -0.56],
+    ];
   }
+  return SHAPE_POLYGONS[shape];
 }

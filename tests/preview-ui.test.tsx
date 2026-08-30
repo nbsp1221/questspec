@@ -13,12 +13,14 @@ import { GRAPH_INTERACTION_PROPS } from '../apps/preview/src/components/QuestGra
 import { QuestInspector } from '../apps/preview/src/components/QuestInspector.tsx';
 import { type QuestNodeData, QuestTokenButton } from '../apps/preview/src/components/QuestNode.tsx';
 import {
+  FTB_QUEST_SHAPES,
   authoredPosition,
   clippedEdgeEndpoints,
   previewViewportKey,
   questNodeSize,
   questRelations,
-  shapeClass,
+  resolveQuestShape,
+  shapeClipPath,
 } from '../apps/preview/src/geometry.ts';
 import { resolveDomainIcon } from '../apps/preview/src/icon-resolver.ts';
 import { createQuestFlowElements } from '../apps/preview/src/quest-flow-model.ts';
@@ -89,10 +91,25 @@ describe('preview UI model boundaries', () => {
     expect(authoredPosition(firstQuest)).toEqual({ x: -210, y: 252 });
     expect(questNodeSize(0.1)).toBe(50);
     expect(questNodeSize(4)).toBe(96);
-    expect(shapeClass('rsquare')).toBe('rounded');
-    expect(shapeClass('diamond')).toBe('diamond');
-    expect(shapeClass('gear')).toBe('faceted');
-    expect(shapeClass('none')).toBe('frameless');
+    expect(FTB_QUEST_SHAPES).toEqual([
+      'circle',
+      'square',
+      'diamond',
+      'rsquare',
+      'pentagon',
+      'hexagon',
+      'octagon',
+      'heart',
+      'gear',
+      'none',
+    ]);
+    expect(resolveQuestShape('rsquare')).toBe('rsquare');
+    expect(resolveQuestShape('diamond')).toBe('diamond');
+    expect(resolveQuestShape('gear')).toBe('gear');
+    expect(resolveQuestShape('hexagon')).toBe('hexagon');
+    expect(resolveQuestShape('none')).toBe('none');
+    expect(resolveQuestShape('custom_resource_shape')).toBe('circle');
+    expect(new Set(FTB_QUEST_SHAPES.map(shapeClipPath)).size).toBe(9);
     expect(Object.fromEntries(questRelations([firstQuest, secondQuest], 'Q2'))).toEqual({
       Q1: 'prerequisite',
       Q2: 'selected',
@@ -141,8 +158,7 @@ describe('preview UI model boundaries', () => {
   });
 
   it('clips straight edges from measured centers to every supported node silhouette', () => {
-    const shapes = ['circle', 'diamond', 'faceted', 'frameless', 'rounded', 'square'] as const;
-    for (const shape of shapes) {
+    for (const shape of FTB_QUEST_SHAPES) {
       const endpoints = clippedEdgeEndpoints(
         { x: 0, y: 0 },
         { x: 100, y: 0 },
@@ -227,6 +243,10 @@ describe('preview components', () => {
     };
     render(<QuestTokenButton data={data} />);
     const button = screen.getByRole('button', { name: 'Punch a Tree' });
+    expect(button.classList.contains('quest-node--diamond')).toBe(true);
+    expect(button.style.getPropertyValue('--silhouette')).toBe(
+      'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+    );
 
     fireEvent.pointerDown(button, { button: 0 });
     fireEvent.pointerUp(button, { button: 0 });
