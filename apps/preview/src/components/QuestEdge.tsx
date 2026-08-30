@@ -60,13 +60,13 @@ export function QuestEdge({
         className="react-flow__edge-path quest-edge__rail"
         d={path}
         fill="none"
-        markerEnd={`url(#${markerId})`}
         vectorEffect="non-scaling-stroke"
       />
       <path
         className="react-flow__edge-path quest-edge__flow"
         d={path}
         fill="none"
+        markerEnd={`url(#${markerId})`}
         vectorEffect="non-scaling-stroke"
       />
     </>

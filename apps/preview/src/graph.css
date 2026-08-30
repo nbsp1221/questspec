@@ -356,7 +356,7 @@
   stroke: var(--edge-flow, var(--ribbon-flow));
   stroke-dasharray: 4 4;
   stroke-linecap: butt;
-  stroke-width: 4;
+  stroke-width: 3;
 }
 
 .quest-edge__arrow path {
