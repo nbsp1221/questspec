@@ -110,6 +110,13 @@ describe('preview UI model boundaries', () => {
     expect(resolveQuestShape('none')).toBe('none');
     expect(resolveQuestShape('custom_resource_shape')).toBe('circle');
     expect(new Set(FTB_QUEST_SHAPES.map(shapeClipPath)).size).toBe(9);
+    expect(shapeClipPath('hexagon')).toBe(
+      'polygon(50% 0%, 92% 23%, 92% 77%, 50% 100%, 8% 77%, 8% 23%)',
+    );
+    expect(shapeClipPath('octagon')).toBe(
+      'polygon(50% 0%, 85% 15%, 100% 50%, 85% 85%, 50% 100%, 15% 85%, 0% 50%, 15% 15%)',
+    );
+    expect(shapeClipPath('rsquare')).toBe('inset(0 round 15%)');
     expect(Object.fromEntries(questRelations([firstQuest, secondQuest], 'Q2'))).toEqual({
       Q1: 'prerequisite',
       Q2: 'selected',

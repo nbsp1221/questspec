@@ -197,9 +197,9 @@
 
 .quest-node__socket {
   display: grid;
-  height: 72%;
+  height: 66.6667%;
   place-items: center;
-  width: 72%;
+  width: 66.6667%;
 }
 
 .quest-node__socket .resource-icon {
@@ -212,30 +212,9 @@
   border-radius: 50%;
 }
 
-.quest-node--diamond .quest-node__socket,
-.quest-node--gear .quest-node__socket,
-.quest-node--heart .quest-node__socket,
-.quest-node--hexagon .quest-node__socket,
-.quest-node--octagon .quest-node__socket,
-.quest-node--pentagon .quest-node__socket {
-  height: 56%;
-  width: 56%;
-}
-
-.quest-node--gear .quest-node__socket,
-.quest-node--heart .quest-node__socket {
-  height: 50%;
-  width: 50%;
-}
-
 .quest-node--none .quest-node__frame,
 .quest-node--none .quest-node__face {
   background: none;
-}
-
-.quest-node--none .quest-node__socket {
-  height: 88%;
-  width: 88%;
 }
 
 .quest-node.relation-prerequisite {

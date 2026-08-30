@@ -91,28 +91,28 @@ const SHAPE_POLYGONS: Readonly<Record<PolygonShape, readonly (readonly [number, 
   ],
   hexagon: [
     [0, -1],
-    [1, -0.5],
-    [1, 0.5],
+    [0.84, -0.54],
+    [0.84, 0.54],
     [0, 1],
-    [-1, 0.5],
-    [-1, -0.5],
+    [-0.84, 0.54],
+    [-0.84, -0.54],
   ],
   octagon: [
-    [-0.42, -1],
-    [0.42, -1],
-    [1, -0.42],
-    [1, 0.42],
-    [0.42, 1],
-    [-0.42, 1],
-    [-1, 0.42],
-    [-1, -0.42],
+    [0, -1],
+    [0.7, -0.7],
+    [1, 0],
+    [0.7, 0.7],
+    [0, 1],
+    [-0.7, 0.7],
+    [-1, 0],
+    [-0.7, -0.7],
   ],
   pentagon: [
-    [0, -1],
-    [0.95, -0.31],
-    [0.59, 0.81],
-    [-0.59, 0.81],
-    [-0.95, -0.31],
+    [0, -0.94],
+    [1, -0.25],
+    [0.62, 0.92],
+    [-0.62, 0.92],
+    [-1, -0.25],
   ],
   square: [
     [-1, -1],
@@ -187,11 +187,15 @@ export function shapeClipPath(shape: QuestShape): string | undefined {
     return undefined;
   }
   if (shape === 'rsquare') {
-    return 'inset(0 round 22%)';
+    return 'inset(0 round 15%)';
   }
   return `polygon(${polygonFor(shape)
-    .map(([x, y]) => `${(x + 1) * 50}% ${(y + 1) * 50}%`)
+    .map(([x, y]) => `${percentCoordinate(x)}% ${percentCoordinate(y)}%`)
     .join(', ')})`;
+}
+
+function percentCoordinate(coordinate: number): number {
+  return Math.round((coordinate + 1) * 5000) / 100;
 }
 
 export function previewViewportKey(locale: string, chapterId: string): string {
@@ -266,14 +270,14 @@ function polygonFor(
 ): readonly (readonly [number, number])[] {
   if (shape === 'rsquare') {
     return [
-      [-0.56, -1],
-      [0.56, -1],
-      [1, -0.56],
-      [1, 0.56],
-      [0.56, 1],
-      [-0.56, 1],
-      [-1, 0.56],
-      [-1, -0.56],
+      [-0.7, -1],
+      [0.7, -1],
+      [1, -0.7],
+      [1, 0.7],
+      [0.7, 1],
+      [-0.7, 1],
+      [-1, 0.7],
+      [-1, -0.7],
     ];
   }
   return SHAPE_POLYGONS[shape];
