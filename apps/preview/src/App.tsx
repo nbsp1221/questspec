@@ -1,9 +1,10 @@
+import type { QuestPreview } from '@questspec/core/preview/types';
 import type { Viewport } from '@xyflow/react';
+import { previewDocumentLanguage } from '@questspec/core/preview/locale';
+import { Button } from '@questspec/ui/components/button';
 import { X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Dialog, Modal, ModalOverlay } from 'react-aria-components';
-import type { QuestPreview } from '../types.ts';
-import { previewDocumentLanguage } from '../locale.ts';
+import { Dialog, Modal, ModalOverlay } from 'react-aria-components';
 import { ChapterNavigation } from './components/ChapterNavigation.tsx';
 import { PreviewHeader } from './components/PreviewHeader.tsx';
 import { QuestGraph } from './components/QuestGraph.tsx';

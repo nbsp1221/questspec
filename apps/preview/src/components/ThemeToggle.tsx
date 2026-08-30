@@ -1,5 +1,5 @@
+import { Toggle } from '@questspec/ui/components/toggle';
 import { Moon, Sun } from 'lucide-react';
-import { ToggleButton } from 'react-aria-components';
 import type { PreviewThemeControl } from '../use-preview-theme.ts';
 
 /**
@@ -10,13 +10,13 @@ import type { PreviewThemeControl } from '../use-preview-theme.ts';
 export function ThemeToggle({ setTheme, theme }: PreviewThemeControl): React.JSX.Element {
   const light = theme === 'light';
   return (
-    <ToggleButton
+    <Toggle
       aria-label="Light theme"
       className="pixel-button"
       isSelected={light}
       onChange={(selected) => setTheme(selected ? 'light' : 'dark')}
     >
       {light ? <Sun aria-hidden="true" size={16} /> : <Moon aria-hidden="true" size={16} />}
-    </ToggleButton>
+    </Toggle>
   );
 }

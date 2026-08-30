@@ -1,6 +1,6 @@
+import type { PreviewChapter, PreviewLocale } from '@questspec/core/preview/types';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import type { PreviewChapter, PreviewLocale } from '../../types.ts';
 import { DomainIcon } from './DomainIcon.tsx';
 
 interface ChapterNavigationProps {

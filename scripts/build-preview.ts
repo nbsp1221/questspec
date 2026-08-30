@@ -1,18 +1,24 @@
+import { execFile } from 'node:child_process';
 import { mkdir, rm } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { build } from 'esbuild';
 
-const outputDirectory = resolve('dist/preview');
+const execute = promisify(execFile);
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const outputDirectory = resolve(repositoryRoot, 'apps/preview/dist');
 
 await rm(outputDirectory, { force: true, recursive: true });
 await mkdir(outputDirectory, { recursive: true });
 await build({
+  absWorkingDir: repositoryRoot,
   bundle: true,
   define: { 'process.env.NODE_ENV': '"production"' },
   entryNames: '[name]',
   entryPoints: {
-    app: 'src/preview/client/main.tsx',
-    theme: 'src/preview/client/theme-bootstrap.ts',
+    app: 'apps/preview/src/main.tsx',
+    theme: 'apps/preview/src/theme-bootstrap.ts',
   },
   format: 'iife',
   legalComments: 'eof',
@@ -23,3 +29,18 @@ await build({
   sourcemap: false,
   target: ['chrome120', 'firefox121', 'safari17'],
 });
+
+const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+await execute(
+  pnpm,
+  [
+    'exec',
+    'tailwindcss',
+    '--input',
+    resolve(repositoryRoot, 'apps/preview/src/styles.css'),
+    '--output',
+    resolve(outputDirectory, 'app.css'),
+    '--minify',
+  ],
+  { cwd: repositoryRoot },
+);

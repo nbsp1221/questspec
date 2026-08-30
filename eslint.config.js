@@ -9,5 +9,5 @@ export default retn0(
     react: true,
   },
   eslintConfigOxlint,
-  globalIgnores(['coverage/**', 'dist/**']),
+  globalIgnores(['**/coverage/**', '**/dist/**']),
 );

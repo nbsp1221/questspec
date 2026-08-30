@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["es2025", "DOM", "DOM.Iterable"],
+    "types": ["react", "react-dom"],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@questspec/ui/*": ["../../packages/ui/src/*"]
+    }
+  },
+  "include": ["src"]
+}

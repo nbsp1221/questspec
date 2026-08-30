@@ -1,6 +1,7 @@
+import type { PreviewDiagnostic, PreviewQuest } from '@questspec/core/preview/types';
+import { Button } from '@questspec/ui/components/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@questspec/ui/components/tabs';
 import { X } from 'lucide-react';
-import { Button, Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
-import type { PreviewDiagnostic, PreviewQuest } from '../../types.ts';
 import { DomainIcon } from './DomainIcon.tsx';
 
 interface QuestInspectorProps {
@@ -37,15 +38,15 @@ export function QuestInspector({
         )}
       </div>
       <Tabs aria-label="Quest inspector" className="pixel-tabs" defaultSelectedKey="details">
-        <TabList className="tab-strip">
-          <Tab className="pixel-tab" id="details">
+        <TabsList className="tab-strip">
+          <TabsTrigger className="pixel-tab" id="details">
             Details
-          </Tab>
-          <Tab className="pixel-tab" id="diagnostics">
+          </TabsTrigger>
+          <TabsTrigger className="pixel-tab" id="diagnostics">
             Diagnostics <span className="pixel-tab__count">{diagnostics.length}</span>
-          </Tab>
-        </TabList>
-        <TabPanel className="tab-body" id="details">
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent className="tab-body" id="details">
           {quest === undefined ? (
             <div className="panel-empty">
               <strong>No quest selected</strong>
@@ -120,8 +121,8 @@ export function QuestInspector({
               </dl>
             </article>
           )}
-        </TabPanel>
-        <TabPanel className="tab-body" id="diagnostics">
+        </TabsContent>
+        <TabsContent className="tab-body" id="diagnostics">
           {diagnostics.length === 0 ? (
             <div className="panel-empty">
               <strong>No diagnostics</strong>
@@ -140,7 +141,7 @@ export function QuestInspector({
               </article>
             ))
           )}
-        </TabPanel>
+        </TabsContent>
       </Tabs>
     </div>
   );

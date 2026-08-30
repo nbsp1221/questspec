@@ -6,7 +6,7 @@ import {
   type AtomicOutputError,
   writeDirectoryAtomic,
   writeFileSetAtomic,
-} from '../../src/filesystem/atomic-output.ts';
+} from '../../packages/core/src/filesystem/atomic-output.ts';
 
 describe('atomic directory output', () => {
   it('refuses to overwrite an existing destination by default', async () => {

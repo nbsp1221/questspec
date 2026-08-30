@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { PhysicalIdAllocationError } from '../../src/identity/physical-id.ts';
-import { allocatePhysicalIds, derivePhysicalId } from '../../src/identity/physical-id.ts';
+import type { PhysicalIdAllocationError } from '../../packages/core/src/identity/physical-id.ts';
+import {
+  allocatePhysicalIds,
+  derivePhysicalId,
+} from '../../packages/core/src/identity/physical-id.ts';
 
 describe('physical FTB IDs', () => {
   it('derives a stable positive signed-long ID from kind and logical identity', () => {

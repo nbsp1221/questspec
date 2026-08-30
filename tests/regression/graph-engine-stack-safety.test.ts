@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { Questbook } from '../../src/ir/questbook.ts';
-import { type QuestGraphEngineEdge, createQuestGraphEngine } from '../../src/graph/engine.ts';
-import { compareQuestKeys } from '../../src/graph/order.ts';
-import { buildQuestGraph } from '../../src/graph/quest-graph.ts';
+import type { Questbook } from '../../packages/core/src/ir/questbook.ts';
+import {
+  type QuestGraphEngineEdge,
+  createQuestGraphEngine,
+} from '../../packages/core/src/graph/engine.ts';
+import { compareQuestKeys } from '../../packages/core/src/graph/order.ts';
+import { buildQuestGraph } from '../../packages/core/src/graph/quest-graph.ts';
 
 const nodeCount = 10_000;
 

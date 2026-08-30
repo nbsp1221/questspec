@@ -2,15 +2,16 @@
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { PreviewLocale, PreviewQuest, QuestPreview } from '../src/preview/types.ts';
-import { ChapterNavigation } from '../src/preview/client/components/ChapterNavigation.tsx';
-import { PreviewHeader } from '../src/preview/client/components/PreviewHeader.tsx';
-import { GRAPH_INTERACTION_PROPS } from '../src/preview/client/components/QuestGraph.tsx';
-import { QuestInspector } from '../src/preview/client/components/QuestInspector.tsx';
-import {
-  type QuestNodeData,
-  QuestTokenButton,
-} from '../src/preview/client/components/QuestNode.tsx';
+import type {
+  PreviewLocale,
+  PreviewQuest,
+  QuestPreview,
+} from '../packages/core/src/preview/types.ts';
+import { ChapterNavigation } from '../apps/preview/src/components/ChapterNavigation.tsx';
+import { PreviewHeader } from '../apps/preview/src/components/PreviewHeader.tsx';
+import { GRAPH_INTERACTION_PROPS } from '../apps/preview/src/components/QuestGraph.tsx';
+import { QuestInspector } from '../apps/preview/src/components/QuestInspector.tsx';
+import { type QuestNodeData, QuestTokenButton } from '../apps/preview/src/components/QuestNode.tsx';
 import {
   authoredPosition,
   clippedEdgeEndpoints,
@@ -18,10 +19,13 @@ import {
   questNodeSize,
   questRelations,
   shapeClass,
-} from '../src/preview/client/geometry.ts';
-import { resolveDomainIcon } from '../src/preview/client/icon-resolver.ts';
-import { createQuestFlowElements } from '../src/preview/client/quest-flow-model.ts';
-import { previewDocumentLanguage, previewLocaleLabel } from '../src/preview/locale.ts';
+} from '../apps/preview/src/geometry.ts';
+import { resolveDomainIcon } from '../apps/preview/src/icon-resolver.ts';
+import { createQuestFlowElements } from '../apps/preview/src/quest-flow-model.ts';
+import {
+  previewDocumentLanguage,
+  previewLocaleLabel,
+} from '../packages/core/src/preview/locale.ts';
 
 const firstQuest: PreviewQuest = {
   dependencies: [],

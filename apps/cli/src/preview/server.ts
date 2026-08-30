@@ -2,8 +2,8 @@ import { readFile, realpath, stat } from 'node:fs/promises';
 import { type Server, createServer } from 'node:http';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readSnbtDirectory } from '../filesystem/read-directory.ts';
-import { type QuestPreview, buildQuestPreview } from './model.ts';
+import { readSnbtDirectory } from '@questspec/core/filesystem/read-directory';
+import { type QuestPreview, buildQuestPreview } from '@questspec/core/preview/model';
 import { renderPreviewPage } from './page.ts';
 
 export interface PreviewServerOptions {
@@ -128,10 +128,9 @@ async function loadPreviewAsset(filename: string, contentType: string): Promise<
 
 function previewAssetDirectory(): string {
   const moduleDirectory = dirname(fileURLToPath(import.meta.url));
-  const runningFromSource =
-    basename(moduleDirectory) === 'preview' && basename(dirname(moduleDirectory)) === 'src';
+  const runningFromSource = basename(dirname(moduleDirectory)) === 'src';
   return runningFromSource
-    ? resolve(moduleDirectory, '../../dist/preview')
+    ? resolve(moduleDirectory, '../../../preview/dist')
     : join(moduleDirectory, 'preview');
 }
 

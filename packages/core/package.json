@@ -1,0 +1,17 @@
+{
+  "name": "@questspec/core",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@statelyai/graph": "2.3.0",
+    "ajv": "^8.20.0",
+    "yaml": "^2.9.0"
+  }
+}

@@ -3,16 +3,16 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PreviewLocale, QuestPreview } from '../src/preview/types.ts';
-import { PreviewHeader } from '../src/preview/client/components/PreviewHeader.tsx';
-import { ThemeToggle } from '../src/preview/client/components/ThemeToggle.tsx';
+import type { PreviewLocale, QuestPreview } from '../packages/core/src/preview/types.ts';
+import { PreviewHeader } from '../apps/preview/src/components/PreviewHeader.tsx';
+import { ThemeToggle } from '../apps/preview/src/components/ThemeToggle.tsx';
 import {
   PREVIEW_THEME_ATTRIBUTE,
   PREVIEW_THEME_STORAGE_KEY,
   type PreviewTheme,
   isPreviewTheme,
-} from '../src/preview/client/theme.ts';
-import { usePreviewTheme } from '../src/preview/client/use-preview-theme.ts';
+} from '../apps/preview/src/theme.ts';
+import { usePreviewTheme } from '../apps/preview/src/use-preview-theme.ts';
 
 interface ColorSchemeStub {
   prefer: (preference: PreviewTheme) => void;
@@ -226,7 +226,7 @@ describe('preview theme state', () => {
     stubColorScheme('dark');
     window.localStorage.setItem(PREVIEW_THEME_STORAGE_KEY, 'light');
     vi.resetModules();
-    await import('../src/preview/client/theme-bootstrap.ts');
+    await import('../apps/preview/src/theme-bootstrap.ts');
 
     expect(documentTheme()).toBe('light');
   });

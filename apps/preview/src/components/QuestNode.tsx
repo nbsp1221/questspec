@@ -1,6 +1,6 @@
+import type { PreviewQuest } from '@questspec/core/preview/types';
 import type { FocusEvent, KeyboardEvent, MouseEvent } from 'react';
 import { Handle, type Node, type NodeProps, Position } from '@xyflow/react';
-import type { PreviewQuest } from '../../types.ts';
 import { type QuestRelation, shapeClass } from '../geometry.ts';
 import { DomainIcon } from './DomainIcon.tsx';
 

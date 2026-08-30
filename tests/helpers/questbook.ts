@@ -1,4 +1,4 @@
-import type { Questbook } from '../../src/ir/questbook.ts';
+import type { Questbook } from '../../packages/core/src/ir/questbook.ts';
 
 const questbook: Questbook = {
   chapters: [

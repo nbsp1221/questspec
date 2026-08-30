@@ -1,8 +1,8 @@
+import type { QuestPreview } from '@questspec/core/preview/types';
+import { previewLocaleLabel } from '@questspec/core/preview/locale';
+import { Button } from '@questspec/ui/components/button';
 import { List, PanelRight } from 'lucide-react';
-import { Button } from 'react-aria-components';
-import type { QuestPreview } from '../../types.ts';
 import type { PreviewThemeControl } from '../use-preview-theme.ts';
-import { previewLocaleLabel } from '../../locale.ts';
 import { DomainIcon } from './DomainIcon.tsx';
 import { ThemeToggle } from './ThemeToggle.tsx';
 

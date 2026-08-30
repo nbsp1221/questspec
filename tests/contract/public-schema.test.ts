@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { expect, it } from 'vitest';
-import { questSpecSchema } from '../../src/spec/schema.ts';
+import { questSpecSchema } from '../../packages/core/src/spec/schema.ts';
 
 const schemaPath = fileURLToPath(new URL('../../schema/questspec-1.json', import.meta.url));
 

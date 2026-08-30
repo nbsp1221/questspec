@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { PhysicalIdMap } from '../../src/identity/physical-id.ts';
-import { snbtSemanticallyEqual } from '../../src/snbt/compare.ts';
-import { parseSnbtCompound } from '../../src/snbt/parser.ts';
+import type { PhysicalIdMap } from '../../packages/core/src/identity/physical-id.ts';
+import { snbtSemanticallyEqual } from '../../packages/core/src/snbt/compare.ts';
+import { parseSnbtCompound } from '../../packages/core/src/snbt/parser.ts';
 import {
   type FtbQuestbookCompilationError,
   compileFtbQuests2101,
-} from '../../src/targets/ftbquests-2101.1.33/encode.ts';
+} from '../../packages/core/src/targets/ftbquests-2101.1.33/encode.ts';
 import { createQuestbookFixture } from '../helpers/questbook.ts';
 
 const importedIds: PhysicalIdMap = {

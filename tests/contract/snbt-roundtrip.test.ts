@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { snbtCompound, snbtDouble, snbtFloat } from '../../src/snbt/build.ts';
-import { snbtSemanticallyEqual } from '../../src/snbt/compare.ts';
-import { parseSnbt } from '../../src/snbt/parser.ts';
-import { writeSnbt } from '../../src/snbt/writer.ts';
+import { snbtCompound, snbtDouble, snbtFloat } from '../../packages/core/src/snbt/build.ts';
+import { snbtSemanticallyEqual } from '../../packages/core/src/snbt/compare.ts';
+import { parseSnbt } from '../../packages/core/src/snbt/parser.ts';
+import { writeSnbt } from '../../packages/core/src/snbt/writer.ts';
 
 describe('FTB-SNBT contract', () => {
   it('preserves typed semantics across parse, write, and parse', () => {

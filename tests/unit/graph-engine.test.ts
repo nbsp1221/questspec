@@ -3,7 +3,7 @@ import {
   type QuestGraphEngineEdge,
   QuestGraphEngineError,
   createQuestGraphEngine,
-} from '../../src/graph/engine.ts';
+} from '../../packages/core/src/graph/engine.ts';
 
 function engine(nodeKeys: readonly string[], pairs: readonly [string, string][]) {
   const edges: QuestGraphEngineEdge[] = pairs.map(([source, target]) => ({

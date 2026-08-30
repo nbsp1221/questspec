@@ -1,4 +1,6 @@
+import type { PreviewChapter, PreviewDiagnostic } from '@questspec/core/preview/types';
 import type { KeyboardEvent } from 'react';
+import { Button } from '@questspec/ui/components/button';
 import {
   type EdgeTypes,
   type NodeTypes,
@@ -8,8 +10,6 @@ import {
 } from '@xyflow/react';
 import { LocateFixed, Search, ZoomIn, ZoomOut } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { Button } from 'react-aria-components';
-import type { PreviewChapter, PreviewDiagnostic } from '../../types.ts';
 import type { PreviewTheme } from '../theme.ts';
 import { authoredPosition, directionalQuest, questNodeSize } from '../geometry.ts';
 import { createQuestFlowElements } from '../quest-flow-model.ts';

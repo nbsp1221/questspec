@@ -95,7 +95,7 @@ describe('packaged browser preview', () => {
       expect(javascript.status).toBe(200);
       expect(stylesheet.status).toBe(200);
       expect(bootstrap.status).toBe(200);
-      expect(await stylesheet.text()).toContain('--mc-green: #55ff55');
+      expect(await stylesheet.text()).toMatch(/--mc-green:(?:#55ff55|#5f5)/u);
       expect(await preview.text()).toContain('Packaged Quest');
     } finally {
       child.kill('SIGTERM');

@@ -1,8 +1,6 @@
-import '@xyflow/react/dist/style.css';
-import './styles.css';
+import type { QuestPreview } from '@questspec/core/preview/types';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { QuestPreview } from '../types.ts';
 import { PreviewApp } from './App.tsx';
 
 const root = document.querySelector<HTMLElement>('#questspec-root');

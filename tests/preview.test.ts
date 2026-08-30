@@ -4,12 +4,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import postcss, { type Declaration, type Root } from 'postcss';
 import { describe, expect, it } from 'vitest';
-import { readSnbtDirectory } from '../src/filesystem/read-directory.ts';
-import { type QuestPreview, buildQuestPreview } from '../src/preview/model.ts';
-import { startPreviewServer } from '../src/preview/server.ts';
+import { startPreviewServer } from '../apps/cli/src/preview/server.ts';
+import { readSnbtDirectory } from '../packages/core/src/filesystem/read-directory.ts';
+import { type QuestPreview, buildQuestPreview } from '../packages/core/src/preview/model.ts';
 
 function authoredStylesheet(file: string): string {
-  return readFileSync(new URL(`../src/preview/client/${file}`, import.meta.url), 'utf8');
+  return readFileSync(new URL(`../apps/preview/src/${file}`, import.meta.url), 'utf8');
 }
 
 const componentStylesheets = ['shell.css', 'graph.css', 'inspector.css'];
@@ -118,7 +118,7 @@ describe('FTB Quests browser preview', () => {
       expect(stylesheet.status).toBe(200);
       expect(stylesheet.headers.get('content-type')).toBe('text/css; charset=utf-8');
       const css = await stylesheet.text();
-      expect(css).toContain('--mc-green: #55ff55');
+      expect(css).toMatch(/--mc-green:(?:#55ff55|#5f5)/u);
       expect(css).toContain('[data-theme=light]');
       expect(bootstrap.status).toBe(200);
       expect(bootstrap.headers.get('content-type')).toBe('text/javascript; charset=utf-8');

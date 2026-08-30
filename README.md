@@ -192,6 +192,25 @@ The `snbt` wrapper is intentional: it preserves byte, int, long, float, double, 
 
 Questspec does not preserve arbitrary unknown FTB data. Unsupported built-in, addon, inline-table, recursive-table, and legacy item-NBT constructs fail closed instead of being silently discarded.
 
+## Repository architecture
+
+The repository is a pnpm workspace orchestrated by Turborepo, but it still publishes one `questspec` CLI package. Workspace boundaries keep development concerns separate; the root build assembles their outputs into the existing `dist` package contract.
+
+```text
+apps/
+  cli/       command-line and loopback HTTP entry points
+  preview/   browser application and quest-specific presentation
+packages/
+  core/      SNBT, IR, validation, graph, target adapters, and preview data model
+  ui/        shared shadcn React Aria primitives and semantic design tokens
+scripts/     build and single-package assembly
+tests/       cross-workspace product and package contracts
+```
+
+Dependency flow is one-way: `apps/cli` and `apps/preview` consume `packages/core`; the preview also consumes `packages/ui`. Core never imports either application or UI code. Quest-specific graph components stay in the preview application, while only reusable interaction primitives and theme vocabulary belong in the UI package.
+
+`pnpm build` runs the application builds through Turborepo, then copies the CLI executable and browser assets into root `dist`. `pnpm pack` therefore continues to produce one installable package with one `questspec` binary and an embedded read-only browser preview.
+
 ## Development
 
 ```sh

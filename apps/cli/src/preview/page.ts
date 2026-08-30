@@ -1,5 +1,5 @@
-import type { QuestPreview } from './model.ts';
-import { previewDocumentLanguage } from './locale.ts';
+import type { QuestPreview } from '@questspec/core/preview/model';
+import { previewDocumentLanguage } from '@questspec/core/preview/locale';
 
 /**
  * Renders the preview shell.

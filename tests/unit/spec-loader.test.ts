@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { loadQuestSpec, loadQuestbook } from '../../src/spec/load.ts';
-import { serializeQuestbook } from '../../src/spec/serialize.ts';
+import { loadQuestSpec, loadQuestbook } from '../../packages/core/src/spec/load.ts';
+import { serializeQuestbook } from '../../packages/core/src/spec/serialize.ts';
 
 const validSource = `
 questspec: 1

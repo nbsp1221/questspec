@@ -1,7 +1,7 @@
 import { performance } from 'node:perf_hooks';
-import { snbtCompound, snbtInt, snbtList, snbtString } from '../src/snbt/build.ts';
-import { parseSnbtCompound } from '../src/snbt/parser.ts';
-import { writeSnbt } from '../src/snbt/writer.ts';
+import { snbtCompound, snbtInt, snbtList, snbtString } from '../packages/core/src/snbt/build.ts';
+import { parseSnbtCompound } from '../packages/core/src/snbt/parser.ts';
+import { writeSnbt } from '../packages/core/src/snbt/writer.ts';
 
 const synthetic = snbtCompound(
   Array.from({ length: 1_000 }, (_, index) => [

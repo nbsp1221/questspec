@@ -12,6 +12,8 @@
  * themes share one set of component rules.
  */
 
+@import '@xyflow/react/dist/style.css';
+@import '@questspec/ui/styles/globals.css';
 @import './tokens.css';
 
 @import './shell.css';

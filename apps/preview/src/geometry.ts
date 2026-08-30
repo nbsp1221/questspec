@@ -1,4 +1,4 @@
-import type { PreviewQuest } from '../types.ts';
+import type { PreviewQuest } from '@questspec/core/preview/types';
 
 export const AUTHORED_GRID_SIZE = 84;
 

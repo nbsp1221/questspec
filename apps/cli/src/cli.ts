@@ -1,14 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
-import { type CAC, cac } from 'cac';
-import pkg from '../package.json' with { type: 'json' };
-import type { Diagnostic } from './diagnostics/diagnostic.ts';
-import type { Questbook } from './ir/questbook.ts';
-import type { YamlSourceMap } from './spec/source-map.ts';
-import { reportDiagnostics } from './diagnostics/reporter.ts';
-import { writeDirectoryAtomic, writeFileSetAtomic } from './filesystem/atomic-output.ts';
-import { readSnbtDirectory } from './filesystem/read-directory.ts';
+import type { Diagnostic } from '@questspec/core/diagnostics/diagnostic';
+import type { Questbook } from '@questspec/core/ir/questbook';
+import type { YamlSourceMap } from '@questspec/core/spec/source-map';
+import { reportDiagnostics } from '@questspec/core/diagnostics/reporter';
+import { writeDirectoryAtomic, writeFileSetAtomic } from '@questspec/core/filesystem/atomic-output';
+import { readSnbtDirectory } from '@questspec/core/filesystem/read-directory';
 import {
   QUEST_GRAPH_QUERY_INVALID_DEPTH,
   QUEST_GRAPH_QUERY_INVALID_DIRECTION,
@@ -18,25 +16,30 @@ import {
   compareQuestKeys,
   queryReachability,
   queryShortestPath,
-} from './graph/index.ts';
+} from '@questspec/core/graph/index';
 import {
   defaultPhysicalIdMapPath,
   readPhysicalIdMap,
   serializePhysicalIdMap,
-} from './identity/id-map.ts';
-import { startPreviewServer } from './preview/server.ts';
-import { type LoadQuestbookGraphState, loadQuestbook } from './spec/load.ts';
-import { serializeQuestbook } from './spec/serialize.ts';
+} from '@questspec/core/identity/id-map';
+import { type LoadQuestbookGraphState, loadQuestbook } from '@questspec/core/spec/load';
+import { serializeQuestbook } from '@questspec/core/spec/serialize';
 import {
   FtbQuestbookImportError,
   decodeFtbQuests2101,
-} from './targets/ftbquests-2101.1.33/decode.ts';
+} from '@questspec/core/targets/ftbquests-2101.1.33/decode';
 import {
   FtbQuestbookCompilationError,
   compileFtbQuests2101,
-} from './targets/ftbquests-2101.1.33/encode.ts';
-import { ftbQuests2101Profile } from './targets/ftbquests-2101.1.33/profile.ts';
-import { parseResourceCatalog, validateQuestbookResources } from './validation/resources.ts';
+} from '@questspec/core/targets/ftbquests-2101.1.33/encode';
+import { ftbQuests2101Profile } from '@questspec/core/targets/ftbquests-2101.1.33/profile';
+import {
+  parseResourceCatalog,
+  validateQuestbookResources,
+} from '@questspec/core/validation/resources';
+import { type CAC, cac } from 'cac';
+import pkg from '../../../package.json' with { type: 'json' };
+import { startPreviewServer } from './preview/server.ts';
 
 interface CommonOptions {
   json?: boolean;

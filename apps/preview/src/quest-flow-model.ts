@@ -1,5 +1,5 @@
+import type { PreviewChapter, PreviewDiagnostic } from '@questspec/core/preview/types';
 import type { CSSProperties } from 'react';
-import type { PreviewChapter, PreviewDiagnostic } from '../types.ts';
 import type { QuestFlowEdge } from './components/QuestEdge.tsx';
 import type { QuestFlowNode } from './components/QuestNode.tsx';
 import { authoredPosition, questNodeSize, questRelations, shapeClass } from './geometry.ts';

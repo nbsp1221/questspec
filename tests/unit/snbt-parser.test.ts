@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { SnbtParseError } from '../../src/snbt/error.ts';
-import { parseSnbt } from '../../src/snbt/parser.ts';
+import type { SnbtParseError } from '../../packages/core/src/snbt/error.ts';
+import { parseSnbt } from '../../packages/core/src/snbt/parser.ts';
 
 describe('parseSnbt', () => {
   it('parses FTB compounds without commas and retains source spans', () => {
