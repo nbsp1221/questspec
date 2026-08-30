@@ -8,6 +8,16 @@ import { describe, expect, it } from 'vitest';
 
 const execute = promisify(execFile);
 
+function packageManagerCommand(
+  command: 'npm' | 'pnpm',
+  arguments_: string[],
+): [file: string, arguments_: string[]] {
+  if (process.platform !== 'win32') {
+    return [command, arguments_];
+  }
+  return [process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', `${command}.cmd`, ...arguments_]];
+}
+
 async function questFixture(root: string): Promise<string> {
   const questDirectory = join(root, 'quest-input');
   await mkdir(join(questDirectory, 'chapters'), { recursive: true });
@@ -56,7 +66,7 @@ describe('packaged browser preview', () => {
     const installDirectory = join(root, 'install');
     await mkdir(packDirectory);
     await mkdir(installDirectory);
-    await execute('pnpm', ['pack', '--pack-destination', packDirectory], {
+    await execute(...packageManagerCommand('pnpm', ['pack', '--pack-destination', packDirectory]), {
       cwd: process.cwd(),
       timeout: 60_000,
     });
@@ -72,10 +82,19 @@ describe('packaged browser preview', () => {
     expect(contents).not.toContain('package/src/');
 
     await writeFile(join(installDirectory, 'package.json'), '{"private":true}');
-    await execute('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', archive], {
-      cwd: installDirectory,
-      timeout: 120_000,
-    });
+    await execute(
+      ...packageManagerCommand('npm', [
+        'install',
+        '--ignore-scripts',
+        '--no-audit',
+        '--no-fund',
+        archive,
+      ]),
+      {
+        cwd: installDirectory,
+        timeout: 120_000,
+      },
+    );
     const input = await questFixture(root);
     const executable = join(installDirectory, 'node_modules', 'questspec', 'dist', 'index.mjs');
     const child = spawn(process.execPath, [executable, 'serve', input], {
