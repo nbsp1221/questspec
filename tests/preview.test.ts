@@ -199,6 +199,13 @@ describe('preview theme token architecture', () => {
       expect(lengths?.slice(2)).toEqual(['0']);
     }
   });
+
+  it('reserves graph colour for active relations instead of diagnostics or inferred completion', () => {
+    expect(components).not.toContain('.react-flow__edge.has-diagnostic');
+    expect(components).not.toMatch(/\.quest-node\.has-diagnostic\s*\{/u);
+    expect(tokens).not.toMatch(/--(?:node-frame|ribbon-(?:rail|flow))-(?:completed|diagnostic):/u);
+    expect(tokens).not.toMatch(/--ribbon-(?:rail|flow)(?:-neutral)?:\s*var\(--mc-green\)/u);
+  });
 });
 
 /*

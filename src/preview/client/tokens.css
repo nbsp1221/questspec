@@ -100,41 +100,40 @@
   --accent-notice-fill: rgba(255, 170, 0, 0.16);
   --accent-danger: var(--mc-red);
 
-  /* Quest tokens on the canvas. */
-  --node-frame: #4f9c46;
+  /*
+   * Quest graph semantics. The preview has no player-progress data, so its
+   * resting state is deliberately neutral. Colour appears only while tracing
+   * the prerequisites and dependents of an active quest.
+   */
+  --node-frame: #8f8c90;
   --node-frame-hover: var(--mc-white);
-  --node-face: rgba(34, 36, 32, 0.92);
-  --node-frame-prerequisite: var(--mc-green);
-  --node-plate-prerequisite: rgba(30, 138, 36, 0.28);
-  --node-plate-edge-prerequisite: rgba(85, 255, 85, 0.55);
-  --node-frame-dependent: var(--mc-gold);
-  --node-plate-dependent: rgba(255, 170, 0, 0.18);
-  --node-plate-edge-dependent: rgba(255, 170, 0, 0.5);
+  --node-face: rgba(35, 35, 39, 0.94);
+  --node-frame-prerequisite: #76b8bc;
+  --node-plate-prerequisite: rgba(70, 133, 138, 0.12);
+  --node-plate-edge-prerequisite: rgba(118, 184, 188, 0.38);
+  --node-frame-dependent: #c1b26d;
+  --node-plate-dependent: rgba(150, 132, 61, 0.1);
+  --node-plate-edge-dependent: rgba(193, 178, 109, 0.36);
   --node-frame-selected: var(--mc-white);
-  --node-face-selected: #45454c;
-  --node-plate-selected: rgba(40, 74, 186, 0.6);
-  --node-plate-edge-selected: #90b0ff;
-  --node-frame-diagnostic: var(--mc-red);
-  --node-plate-diagnostic: rgba(160, 32, 32, 0.55);
-  --node-plate-edge-diagnostic: #ff8a8a;
+  --node-face-selected: #454348;
+  --node-plate-selected: rgba(174, 172, 180, 0.12);
+  --node-plate-edge-selected: #8f8c94;
   --node-dimmed-opacity: 0.34;
   --mark-optional-face: #4a3a10;
   --mark-optional-text: var(--mc-gold);
-  --mark-diagnostic-face: #4a1414;
-  --mark-diagnostic-text: var(--mc-red);
+  --mark-diagnostic-face: #3a2425;
+  --mark-diagnostic-text: #d9847f;
 
-  /* Segmented dependency ribbons. */
-  --ribbon-bed: #000000;
-  --ribbon-rail: #2c7a31;
-  --ribbon-flow: #8ff07c;
-  --ribbon-rail-neutral: #256b2a;
-  --ribbon-flow-neutral: #7ade68;
-  --ribbon-rail-prerequisite: #1e7a26;
-  --ribbon-flow-prerequisite: var(--mc-green);
-  --ribbon-rail-dependent: #6b4700;
-  --ribbon-flow-dependent: var(--mc-gold);
-  --ribbon-rail-diagnostic: #5c1616;
-  --ribbon-flow-diagnostic: var(--mc-red);
+  /* Resting ribbons recede; relation colours appear only around an active quest. */
+  --ribbon-bed: #181719;
+  --ribbon-rail: #62555a;
+  --ribbon-flow: #aa9299;
+  --ribbon-rail-neutral: #62555a;
+  --ribbon-flow-neutral: #aa9299;
+  --ribbon-rail-prerequisite: #365f63;
+  --ribbon-flow-prerequisite: #76b8bc;
+  --ribbon-rail-dependent: #675f38;
+  --ribbon-flow-dependent: #c1b26d;
   --ribbon-muted-opacity: 0.32;
 
   /*
@@ -213,40 +212,34 @@
   --accent-notice-fill: rgba(190, 126, 0, 0.16);
   --accent-danger: #a8201f;
 
-  --node-frame: #3f7d38;
+  --node-frame: #747572;
   --node-frame-hover: #101218;
   --node-face: rgba(250, 250, 244, 0.94);
-  --node-frame-prerequisite: #1c7a24;
-  --node-plate-prerequisite: rgba(28, 122, 36, 0.18);
-  --node-plate-edge-prerequisite: rgba(20, 92, 27, 0.65);
-  --node-frame-dependent: #a86b00;
-  --node-plate-dependent: rgba(214, 143, 0, 0.2);
-  --node-plate-edge-dependent: rgba(138, 90, 0, 0.6);
+  --node-frame-prerequisite: #347c82;
+  --node-plate-prerequisite: rgba(52, 124, 130, 0.08);
+  --node-plate-edge-prerequisite: rgba(52, 124, 130, 0.3);
+  --node-frame-dependent: #887b35;
+  --node-plate-dependent: rgba(136, 123, 53, 0.08);
+  --node-plate-edge-dependent: rgba(136, 123, 53, 0.3);
   --node-frame-selected: #16181d;
-  --node-face-selected: #dde3f6;
-  --node-plate-selected: rgba(40, 74, 186, 0.28);
-  --node-plate-edge-selected: #2a4bb0;
-  --node-frame-diagnostic: #a8201f;
-  --node-plate-diagnostic: rgba(168, 32, 31, 0.22);
-  --node-plate-edge-diagnostic: #8e1a19;
+  --node-face-selected: #deded7;
+  --node-plate-selected: rgba(71, 75, 84, 0.1);
+  --node-plate-edge-selected: #73777d;
   --node-dimmed-opacity: 0.42;
   --mark-optional-face: #f0cf87;
   --mark-optional-text: #573900;
-  --mark-diagnostic-face: #f0b9b9;
-  --mark-diagnostic-text: #7a1414;
+  --mark-diagnostic-face: #ecd8d5;
+  --mark-diagnostic-text: #8b3c38;
 
-  /* Ribbons keep the dark rail and lighter segments, both darkened one step. */
-  --ribbon-bed: #2b2b28;
-  --ribbon-rail: #1f5c25;
-  --ribbon-flow: #57ad48;
-  --ribbon-rail-neutral: #22602a;
-  --ribbon-flow-neutral: #4f9f43;
-  --ribbon-rail-prerequisite: #17561d;
-  --ribbon-flow-prerequisite: #3fb545;
-  --ribbon-rail-dependent: #6b4700;
-  --ribbon-flow-dependent: #e0a01a;
-  --ribbon-rail-diagnostic: #641414;
-  --ribbon-flow-diagnostic: #d24040;
+  --ribbon-bed: #d0ccc4;
+  --ribbon-rail: #907d83;
+  --ribbon-flow: #b69ca4;
+  --ribbon-rail-neutral: #907d83;
+  --ribbon-flow-neutral: #b69ca4;
+  --ribbon-rail-prerequisite: #416f73;
+  --ribbon-flow-prerequisite: #65a7ab;
+  --ribbon-rail-dependent: #71683c;
+  --ribbon-flow-dependent: #a99b53;
   --ribbon-muted-opacity: 0.45;
 
   --sprite-body-shade: 38% 42%;

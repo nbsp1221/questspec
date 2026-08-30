@@ -752,15 +752,6 @@ code {
   --plate-edge: var(--node-plate-edge-selected);
 }
 
-.quest-node.has-diagnostic {
-  --frame: var(--node-frame-diagnostic);
-}
-
-.quest-node.has-diagnostic.relation-selected {
-  --plate: var(--node-plate-diagnostic);
-  --plate-edge: var(--node-plate-edge-diagnostic);
-}
-
 .quest-node:hover {
   --frame: var(--node-frame-hover);
 }
@@ -882,11 +873,6 @@ code {
 
 .react-flow__edge.relation-muted {
   opacity: var(--ribbon-muted-opacity);
-}
-
-.react-flow__edge.has-diagnostic {
-  --edge-flow: var(--ribbon-flow-diagnostic);
-  --edge-rail: var(--ribbon-rail-diagnostic);
 }
 
 /* -------------------------------------------------------- resource icons */

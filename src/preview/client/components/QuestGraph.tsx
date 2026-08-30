@@ -208,7 +208,7 @@ function QuestGraphInner({
                         : dependency === activeQuestId
                           ? 'relation-dependent'
                           : 'relation-muted'
-                  }${diagnosticIds.has(dependency) || diagnosticIds.has(quest.id) ? ' has-diagnostic' : ''}`,
+                  }`,
                   data: {
                     sourceShape: shapeClass(source.shape),
                     sourceSize: questNodeSize(source.size),
@@ -224,7 +224,7 @@ function QuestGraphInner({
                 };
               }),
       ),
-    [activeQuestId, chapter.quests, diagnosticIds, questById],
+    [activeQuestId, chapter.quests, questById],
   );
 
   const bounds = useMemo(() => authoredBounds(chapter), [chapter]);
