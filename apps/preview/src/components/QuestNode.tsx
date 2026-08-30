@@ -1,6 +1,7 @@
 import type { PreviewQuest } from '@questspec/core/preview/types';
 import type { CSSProperties, FocusEvent, KeyboardEvent, MouseEvent } from 'react';
 import { Handle, type Node, type NodeProps, Position } from '@xyflow/react';
+import { useEffect, useRef, useState } from 'react';
 import { type QuestRelation, resolveQuestShape, shapeClipPath } from '../geometry.ts';
 import { DomainIcon } from './DomainIcon.tsx';
 
@@ -26,6 +27,8 @@ const CENTER_HANDLE_STYLE = {
   top: '50%',
   transform: 'translate(-50%, -50%)',
 };
+
+export const QUEST_TOOLTIP_DELAY_MS = 120;
 
 export function QuestNode({ data }: NodeProps<QuestFlowNode>): React.JSX.Element {
   return (
@@ -53,6 +56,8 @@ export function QuestNode({ data }: NodeProps<QuestFlowNode>): React.JSX.Element
 
 export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.Element {
   const { quest } = data;
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const shape = resolveQuestShape(quest.shape);
   const silhouette = shapeClipPath(shape);
   const optional = quest.optional ? ', optional' : '';
@@ -78,18 +83,49 @@ export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.E
     }
   };
 
+  const cancelTooltipTimer = (): void => {
+    if (tooltipTimerRef.current !== undefined) {
+      clearTimeout(tooltipTimerRef.current);
+      tooltipTimerRef.current = undefined;
+    }
+  };
+
+  const onPointerEnter = (): void => {
+    data.onHover(quest.id);
+    cancelTooltipTimer();
+    tooltipTimerRef.current = setTimeout(() => {
+      tooltipTimerRef.current = undefined;
+      setTooltipVisible(true);
+    }, QUEST_TOOLTIP_DELAY_MS);
+  };
+
+  const onPointerLeave = (): void => {
+    data.onHover(undefined);
+    cancelTooltipTimer();
+    setTooltipVisible(false);
+  };
+
+  useEffect(
+    () => () => {
+      if (tooltipTimerRef.current !== undefined) {
+        clearTimeout(tooltipTimerRef.current);
+      }
+    },
+    [],
+  );
+
   return (
     <button
       aria-label={`${quest.title}${optional}${relationship}${data.diagnostic ? ', has diagnostic' : ''}`}
       aria-pressed={data.selected}
-      className={`nodrag nopan quest-node quest-node--${shape} relation-${data.relation}${data.dimmed ? ' is-dimmed' : ''}${data.diagnostic ? ' has-diagnostic' : ''}`}
+      className={`nodrag nopan quest-node quest-node--${shape} relation-${data.relation}${data.dimmed ? ' is-dimmed' : ''}${data.diagnostic ? ' has-diagnostic' : ''}${tooltipVisible ? ' is-tooltip-visible' : ''}`}
       data-quest-id={quest.id}
       onBlur={onBlur}
       onClick={activate}
       onFocus={() => data.onFocus(quest.id)}
       onKeyDown={onKeyDown}
-      onPointerEnter={() => data.onHover(quest.id)}
-      onPointerLeave={() => data.onHover(undefined)}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
       style={style}
       tabIndex={data.focused ? 0 : -1}
       type="button"

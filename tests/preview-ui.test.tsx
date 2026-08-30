@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   PreviewLocale,
@@ -11,7 +12,11 @@ import { ChapterNavigation } from '../apps/preview/src/components/ChapterNavigat
 import { PreviewHeader } from '../apps/preview/src/components/PreviewHeader.tsx';
 import { GRAPH_INTERACTION_PROPS } from '../apps/preview/src/components/QuestGraph.tsx';
 import { QuestInspector } from '../apps/preview/src/components/QuestInspector.tsx';
-import { type QuestNodeData, QuestTokenButton } from '../apps/preview/src/components/QuestNode.tsx';
+import {
+  QUEST_TOOLTIP_DELAY_MS,
+  type QuestNodeData,
+  QuestTokenButton,
+} from '../apps/preview/src/components/QuestNode.tsx';
 import {
   FTB_QUEST_SHAPES,
   authoredPosition,
@@ -84,7 +89,10 @@ const locale: PreviewLocale = {
   groups: [{ id: 'G', order: 0, title: 'Foundations' }],
 };
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe('preview UI model boundaries', () => {
   it('preserves authored positions, size policy, shapes, and directional relationships', () => {
@@ -273,6 +281,40 @@ describe('preview components', () => {
     expect(activate).toHaveBeenNthCalledWith(1, firstQuest.id);
     expect(activate).toHaveBeenNthCalledWith(2, firstQuest.id);
     expect(activate).toHaveBeenNthCalledWith(3, firstQuest.id);
+  });
+
+  it('shows a quest tooltip only after the pointer settles on its node', async () => {
+    vi.useFakeTimers();
+    const onHover = vi.fn();
+    const data: QuestNodeData = {
+      diagnostic: false,
+      dimmed: false,
+      focused: true,
+      onActivate: vi.fn(),
+      onBlur: vi.fn(),
+      onFocus: vi.fn(),
+      onHover,
+      onNavigate: vi.fn(),
+      quest: firstQuest,
+      relation: 'neutral',
+      selected: false,
+    };
+    render(<QuestTokenButton data={data} />);
+    const button = screen.getByRole('button', { name: 'Punch a Tree' });
+
+    for (let index = 0; index < 6; index += 1) {
+      fireEvent.pointerEnter(button);
+      await act(() => vi.advanceTimersByTime(QUEST_TOOLTIP_DELAY_MS - 1));
+      fireEvent.pointerLeave(button);
+      expect(button.classList.contains('is-tooltip-visible')).toBe(false);
+    }
+
+    fireEvent.pointerEnter(button);
+    await act(() => vi.advanceTimersByTime(QUEST_TOOLTIP_DELAY_MS));
+    expect(button.classList.contains('is-tooltip-visible')).toBe(true);
+    fireEvent.pointerLeave(button);
+    expect(button.classList.contains('is-tooltip-visible')).toBe(false);
+    expect(onHover).toHaveBeenLastCalledWith(undefined);
   });
 
   it('filters grouped chapters and exposes the current chapter state', () => {

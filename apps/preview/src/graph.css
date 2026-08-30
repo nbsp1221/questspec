@@ -286,7 +286,7 @@
   z-index: 12;
 }
 
-.quest-node:hover .quest-tip,
+.quest-node.is-tooltip-visible .quest-tip,
 .quest-node:focus-visible .quest-tip {
   display: grid;
 }
