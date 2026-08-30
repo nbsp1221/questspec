@@ -283,7 +283,7 @@ describe('preview components', () => {
     expect(activate).toHaveBeenNthCalledWith(3, firstQuest.id);
   });
 
-  it('shows a quest tooltip only after the pointer settles on its node', async () => {
+  it('keeps the quest tooltip timer stable across decorative child boundaries', async () => {
     vi.useFakeTimers();
     const onHover = vi.fn();
     const data: QuestNodeData = {
@@ -301,18 +301,26 @@ describe('preview components', () => {
     };
     render(<QuestTokenButton data={data} />);
     const button = screen.getByRole('button', { name: 'Punch a Tree' });
+    const frame = button.querySelector<HTMLElement>('.quest-node__frame');
+    const face = button.querySelector<HTMLElement>('.quest-node__face');
+    const socket = button.querySelector<HTMLElement>('.quest-node__socket');
+    expect(frame).not.toBeNull();
+    expect(face).not.toBeNull();
+    expect(socket).not.toBeNull();
 
-    for (let index = 0; index < 6; index += 1) {
-      fireEvent.pointerEnter(button);
-      await act(() => vi.advanceTimersByTime(QUEST_TOOLTIP_DELAY_MS - 1));
-      fireEvent.pointerLeave(button);
-      expect(button.classList.contains('is-tooltip-visible')).toBe(false);
-    }
-
-    fireEvent.pointerEnter(button);
-    await act(() => vi.advanceTimersByTime(QUEST_TOOLTIP_DELAY_MS));
+    fireEvent.pointerOver(button, { relatedTarget: document.body });
+    await act(() => vi.advanceTimersByTime(40));
+    fireEvent.pointerOut(frame!, { relatedTarget: face });
+    fireEvent.pointerOver(face!, { relatedTarget: frame });
+    await act(() => vi.advanceTimersByTime(40));
+    fireEvent.pointerOut(face!, { relatedTarget: socket });
+    fireEvent.pointerOver(socket!, { relatedTarget: face });
+    await act(() => vi.advanceTimersByTime(QUEST_TOOLTIP_DELAY_MS - 80));
     expect(button.classList.contains('is-tooltip-visible')).toBe(true);
-    fireEvent.pointerLeave(button);
+    expect(onHover).toHaveBeenCalledTimes(1);
+    expect(onHover).toHaveBeenLastCalledWith(firstQuest.id);
+
+    fireEvent.pointerOut(button, { relatedTarget: document.body });
     expect(button.classList.contains('is-tooltip-visible')).toBe(false);
     expect(onHover).toHaveBeenLastCalledWith(undefined);
   });

@@ -23,14 +23,28 @@ interface QuestFlowModelOptions {
   selectedQuestId: string | undefined;
 }
 
+type QuestFlowNodeOptions = Omit<QuestFlowModelOptions, 'activeQuestId'>;
+
+interface QuestFlowEdgeOptions {
+  activeQuestId: string | undefined;
+  chapter: PreviewChapter;
+}
+
 export interface QuestFlowElements {
   edges: QuestFlowEdge[];
   nodes: QuestFlowNode[];
 }
 
-/** Builds the React Flow projection without owning any interaction state. */
-export function createQuestFlowElements({
-  activeQuestId,
+/** Builds the complete React Flow projection for non-interactive consumers. */
+export function createQuestFlowElements(options: QuestFlowModelOptions): QuestFlowElements {
+  return {
+    edges: createQuestFlowEdges(options),
+    nodes: createQuestFlowNodes(options),
+  };
+}
+
+/** Builds nodes independently so edge-only hover changes cannot disturb hit testing. */
+export function createQuestFlowNodes({
   callbacks,
   chapter,
   diagnostics,
@@ -38,12 +52,11 @@ export function createQuestFlowElements({
   matchingQuestIds,
   queryActive,
   selectedQuestId,
-}: QuestFlowModelOptions): QuestFlowElements {
+}: QuestFlowNodeOptions): QuestFlowNode[] {
   const diagnosticIds = new Set(diagnostics.flatMap((diagnostic) => diagnostic.questId ?? []));
-  const questById = new Map(chapter.quests.map((quest) => [quest.id, quest]));
   const relations = questRelations(chapter.quests, selectedQuestId);
 
-  const nodes = chapter.quests.map((quest): QuestFlowNode => {
+  return chapter.quests.map((quest): QuestFlowNode => {
     const size = questNodeSize(quest.size);
     const style = {
       '--node-size': `${size}px`,
@@ -67,8 +80,16 @@ export function createQuestFlowElements({
       type: 'quest',
     };
   });
+}
 
-  const edges = chapter.quests.flatMap((quest) =>
+/** Builds the hover-sensitive edge projection without recreating nodes. */
+export function createQuestFlowEdges({
+  activeQuestId,
+  chapter,
+}: QuestFlowEdgeOptions): QuestFlowEdge[] {
+  const questById = new Map(chapter.quests.map((quest) => [quest.id, quest]));
+
+  return chapter.quests.flatMap((quest) =>
     quest.hideDependencyLines
       ? []
       : quest.dependencies.flatMap((dependency): QuestFlowEdge[] => {
@@ -96,8 +117,6 @@ export function createQuestFlowElements({
           ];
         }),
   );
-
-  return { edges, nodes };
 }
 
 function relationClass(

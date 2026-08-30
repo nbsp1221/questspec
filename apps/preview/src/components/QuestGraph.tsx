@@ -12,7 +12,7 @@ import { LocateFixed, Search, ZoomIn, ZoomOut } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import type { PreviewTheme } from '../theme.ts';
 import { authoredPosition, directionalQuest, questNodeSize } from '../geometry.ts';
-import { createQuestFlowElements } from '../quest-flow-model.ts';
+import { createQuestFlowEdges, createQuestFlowNodes } from '../quest-flow-model.ts';
 import { MAX_QUEST_ZOOM, MIN_QUEST_ZOOM, useQuestViewport } from '../use-quest-viewport.ts';
 import { DomainIcon } from './DomainIcon.tsx';
 import { QuestEdge, type QuestFlowEdge } from './QuestEdge.tsx';
@@ -106,20 +106,24 @@ function QuestGraphInner({
     [chapter.quests],
   );
 
-  const { edges, nodes } = useMemo(
+  const callbacks = useMemo(
+    () => ({
+      onActivate: onSelect,
+      onBlur: (id: string) => setFocusPathId((current) => (current === id ? undefined : current)),
+      onFocus: (id: string) => {
+        setFocusedId(id);
+        setFocusPathId(id);
+      },
+      onHover: setHoveredId,
+      onNavigate: navigate,
+    }),
+    [navigate, onSelect],
+  );
+
+  const nodes = useMemo(
     () =>
-      createQuestFlowElements({
-        activeQuestId,
-        callbacks: {
-          onActivate: onSelect,
-          onBlur: (id) => setFocusPathId((current) => (current === id ? undefined : current)),
-          onFocus: (id) => {
-            setFocusedId(id);
-            setFocusPathId(id);
-          },
-          onHover: setHoveredId,
-          onNavigate: navigate,
-        },
+      createQuestFlowNodes({
+        callbacks,
         chapter,
         diagnostics,
         focusedId,
@@ -128,16 +132,18 @@ function QuestGraphInner({
         selectedQuestId,
       }),
     [
-      activeQuestId,
+      callbacks,
       chapter,
       diagnostics,
       focusedId,
       matchingQuestIds,
-      navigate,
       normalizedQuery,
-      onSelect,
       selectedQuestId,
     ],
+  );
+  const edges = useMemo(
+    () => createQuestFlowEdges({ activeQuestId, chapter }),
+    [activeQuestId, chapter],
   );
 
   const selectFirstMatch = (): void => {

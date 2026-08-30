@@ -171,6 +171,11 @@
   width: 100%;
 }
 
+/* All descendants are visual decoration; the button is the sole pointer target. */
+.quest-node * {
+  pointer-events: none;
+}
+
 .quest-node__plate {
   background: var(--plate);
   border: 2px solid var(--plate-edge);

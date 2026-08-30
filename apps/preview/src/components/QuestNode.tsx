@@ -1,5 +1,5 @@
 import type { PreviewQuest } from '@questspec/core/preview/types';
-import type { CSSProperties, FocusEvent, KeyboardEvent, MouseEvent } from 'react';
+import type { CSSProperties, FocusEvent, KeyboardEvent, MouseEvent, PointerEvent } from 'react';
 import { Handle, type Node, type NodeProps, Position } from '@xyflow/react';
 import { useEffect, useRef, useState } from 'react';
 import { type QuestRelation, resolveQuestShape, shapeClipPath } from '../geometry.ts';
@@ -90,16 +90,28 @@ export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.E
     }
   };
 
-  const onPointerEnter = (): void => {
+  const pointerStayedInside = (event: PointerEvent<HTMLButtonElement>): boolean =>
+    event.relatedTarget instanceof globalThis.Node &&
+    event.currentTarget.contains(event.relatedTarget);
+
+  const onPointerOver = (event: PointerEvent<HTMLButtonElement>): void => {
+    if (pointerStayedInside(event)) {
+      return;
+    }
     data.onHover(quest.id);
-    cancelTooltipTimer();
+    if (tooltipVisible || tooltipTimerRef.current !== undefined) {
+      return;
+    }
     tooltipTimerRef.current = setTimeout(() => {
       tooltipTimerRef.current = undefined;
       setTooltipVisible(true);
     }, QUEST_TOOLTIP_DELAY_MS);
   };
 
-  const onPointerLeave = (): void => {
+  const onPointerOut = (event: PointerEvent<HTMLButtonElement>): void => {
+    if (pointerStayedInside(event)) {
+      return;
+    }
     data.onHover(undefined);
     cancelTooltipTimer();
     setTooltipVisible(false);
@@ -124,8 +136,8 @@ export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.E
       onClick={activate}
       onFocus={() => data.onFocus(quest.id)}
       onKeyDown={onKeyDown}
-      onPointerEnter={onPointerEnter}
-      onPointerLeave={onPointerLeave}
+      onPointerOut={onPointerOut}
+      onPointerOver={onPointerOver}
       style={style}
       tabIndex={data.focused ? 0 : -1}
       type="button"
