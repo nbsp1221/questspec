@@ -92,7 +92,6 @@ export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.E
       onPointerLeave={() => data.onHover(undefined)}
       style={style}
       tabIndex={data.focused ? 0 : -1}
-      title={quest.title}
       type="button"
     >
       <span aria-hidden="true" className="quest-node__plate" />

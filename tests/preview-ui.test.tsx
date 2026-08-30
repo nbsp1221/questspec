@@ -254,6 +254,8 @@ describe('preview components', () => {
     expect(button.style.getPropertyValue('--silhouette')).toBe(
       'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
     );
+    expect(button.getAttribute('title')).toBeNull();
+    expect(button.querySelector('.quest-tip')?.textContent).toContain('Punch a Tree');
 
     fireEvent.pointerDown(button, { button: 0 });
     fireEvent.pointerUp(button, { button: 0 });
