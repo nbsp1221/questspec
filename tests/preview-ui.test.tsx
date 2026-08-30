@@ -339,9 +339,11 @@ describe('preview components', () => {
 
   it('renders readable locales and valid closed narrow-overlay trigger state', () => {
     const preview: QuestPreview = {
+      availableLocales: ['en_us', 'ko_kr'],
       diagnostics: [],
       directory: '/packs/example/quests',
-      locales: { en_us: locale, ko_kr: locale },
+      locale,
+      questIndex: {},
       selectedLocale: 'en_us',
       stats: { chapters: 2, dependencies: 1, groups: 1, quests: 2 },
     };
@@ -377,6 +379,10 @@ describe('preview components', () => {
         ]}
         onSelectQuest={select}
         quest={secondQuest}
+        questIndex={{
+          Q1: { chapterId: 'A', dependencies: [], title: 'Punch a Tree' },
+          Q2: { chapterId: 'B', dependencies: ['Q1'], title: 'Level Up' },
+        }}
       />,
     );
     expect(screen.getByRole('tab', { name: 'Details' }).getAttribute('aria-selected')).toBe('true');

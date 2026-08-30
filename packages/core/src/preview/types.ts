@@ -51,10 +51,26 @@ export interface PreviewLocale {
   groups: PreviewGroup[];
 }
 
+export type PreviewChapterSummary = Omit<PreviewChapter, 'quests'> & { questCount?: number };
+
+export interface PreviewLocaleIndex {
+  chapters: PreviewChapterSummary[];
+  groups: PreviewGroup[];
+}
+
+export interface PreviewQuestReference {
+  chapterId: string;
+  dependencies: string[];
+  title: string;
+}
+
 export interface QuestPreview {
+  availableLocales: string[];
+  chapter?: PreviewChapter;
   diagnostics: PreviewDiagnostic[];
   directory: string;
-  locales: Record<string, PreviewLocale>;
+  locale: PreviewLocaleIndex;
+  questIndex: Record<string, PreviewQuestReference>;
   selectedLocale: string;
   stats: { chapters: number; dependencies: number; groups: number; quests: number };
 }

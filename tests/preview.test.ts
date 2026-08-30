@@ -60,8 +60,9 @@ describe('FTB Quests browser preview', () => {
 
     expect(preview.selectedLocale).toBe('en_us');
     expect(preview.stats).toEqual({ chapters: 1, dependencies: 1, groups: 1, quests: 2 });
-    expect(preview.locales.en_us.groups[0].title).toBe('Getting Started');
-    expect(preview.locales.en_us.chapters[0]).toMatchObject({
+    expect(preview.availableLocales).toEqual(['en_us']);
+    expect(preview.locale.groups[0].title).toBe('Getting Started');
+    expect(preview.chapter).toMatchObject({
       icon: 'minecraft:book',
       title: 'First Steps',
       quests: [
@@ -76,6 +77,41 @@ describe('FTB Quests browser preview', () => {
         { dependencies: ['Q1'], optional: true, title: 'Level Up' },
       ],
     });
+  });
+
+  it('merges Lang Splitter fragments by their locale directory', async () => {
+    const root = await fixture();
+    await mkdir(join(root, 'lang', 'ko_kr', 'chapters'), { recursive: true });
+    await writeFile(
+      join(root, 'lang', 'ko_kr', 'chapter_group.snbt'),
+      '{ chapter_group.A.title: "시작하기" }',
+    );
+    await writeFile(
+      join(root, 'lang', 'ko_kr', 'chapters', 'start.snbt'),
+      '{ chapter.B.title: "첫걸음", quest.Q1.title: "나무 캐기" }',
+    );
+
+    const preview = buildQuestPreview(root, await readSnbtDirectory(root), 'ko_kr');
+
+    expect(preview.availableLocales).toEqual(['en_us', 'ko_kr']);
+    expect(preview.selectedLocale).toBe('ko_kr');
+    expect(preview.locale.groups[0]?.title).toBe('시작하기');
+    expect(preview.chapter).toMatchObject({
+      title: '첫걸음',
+      quests: [{ title: '나무 캐기' }, { title: 'Level Up' }],
+    });
+  });
+
+  it('accepts dependencies on task objects supported by FTB Quests', async () => {
+    const root = await fixture();
+    const chapterPath = join(root, 'chapters', 'start.snbt');
+    const chapter = await readFile(chapterPath, 'utf8');
+    await writeFile(chapterPath, chapter.replace('dependencies: ["Q1"]', 'dependencies: ["T1"]'));
+
+    const preview = buildQuestPreview(root, await readSnbtDirectory(root));
+
+    expect(preview.chapter?.quests[1]?.dependencies).toEqual(['T1']);
+    expect(preview.diagnostics).toEqual([]);
   });
 
   it('serves a self-contained read-only UI on loopback without changing the input', async () => {
@@ -108,7 +144,9 @@ describe('FTB Quests browser preview', () => {
       const previewResponse = await fetch(new URL('/preview.json', preview.url));
       expect(previewResponse.headers.get('content-type')).toBe('application/json; charset=utf-8');
       const previewData = (await previewResponse.json()) as QuestPreview;
-      expect(previewData.locales.en_us?.chapters[0]?.quests[0]?.title).toBe('Punch a Tree');
+      expect(previewData.chapter?.quests[0]?.title).toBe('Punch a Tree');
+      expect(previewData.locale.chapters[0]).not.toHaveProperty('quests');
+      expect(previewData.locale.chapters[0]).toHaveProperty('questCount', 2);
       const javascript = await fetch(new URL('/assets/app.js', preview.url));
       const stylesheet = await fetch(new URL('/assets/app.css', preview.url));
       const bootstrap = await fetch(new URL('/assets/theme.js', preview.url));

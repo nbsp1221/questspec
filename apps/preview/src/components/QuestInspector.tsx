@@ -1,4 +1,8 @@
-import type { PreviewDiagnostic, PreviewQuest } from '@questspec/core/preview/types';
+import type {
+  PreviewDiagnostic,
+  PreviewQuest,
+  PreviewQuestReference,
+} from '@questspec/core/preview/types';
 import { Button } from '@questspec/ui/components/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@questspec/ui/components/tabs';
 import { X } from 'lucide-react';
@@ -10,6 +14,7 @@ interface QuestInspectorProps {
   onClose?: () => void;
   onSelectQuest: (id: string) => void;
   quest: PreviewQuest | undefined;
+  questIndex: Readonly<Record<string, PreviewQuestReference>>;
 }
 
 export function QuestInspector({
@@ -18,14 +23,18 @@ export function QuestInspector({
   onClose,
   onSelectQuest,
   quest,
+  questIndex,
 }: QuestInspectorProps): React.JSX.Element {
   const questById = new Map(allQuests.map((candidate) => [candidate.id, candidate]));
   const dependents =
     quest === undefined
       ? []
-      : allQuests.filter((candidate) => candidate.dependencies.includes(quest.id));
+      : Object.entries(questIndex)
+          .filter(([, candidate]) => candidate.dependencies.includes(quest.id))
+          .map(([id]) => id);
 
-  const labelFor = (id: string): string => questById.get(id)?.title ?? `Unavailable quest (${id})`;
+  const labelFor = (id: string): string =>
+    questById.get(id)?.title ?? questIndex[id]?.title ?? `Unavailable quest (${id})`;
 
   return (
     <div className="inspector-panel">
@@ -88,7 +97,7 @@ export function QuestInspector({
                 onSelect={onSelectQuest}
               />
               <RelationshipSection
-                ids={dependents.map((candidate) => candidate.id)}
+                ids={dependents}
                 label="Unlocks"
                 labelFor={labelFor}
                 onSelect={onSelectQuest}

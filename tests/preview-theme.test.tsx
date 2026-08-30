@@ -193,9 +193,11 @@ describe('preview theme state', () => {
   it('reaches the switch by keyboard and exposes it from the preview header', async () => {
     const locale: PreviewLocale = { chapters: [], groups: [] };
     const preview: QuestPreview = {
+      availableLocales: ['en_us'],
       diagnostics: [],
       directory: '/packs/example/quests',
-      locales: { en_us: locale },
+      locale,
+      questIndex: {},
       selectedLocale: 'en_us',
       stats: { chapters: 0, dependencies: 0, groups: 0, quests: 0 },
     };

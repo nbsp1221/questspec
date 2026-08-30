@@ -3,7 +3,11 @@ import { type Server, createServer } from 'node:http';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readSnbtDirectory } from '@questspec/core/filesystem/read-directory';
-import { type QuestPreview, buildQuestPreview } from '@questspec/core/preview/model';
+import {
+  type QuestPreview,
+  buildQuestPreviewForLocale,
+  buildQuestPreviewSource,
+} from '@questspec/core/preview/model';
 import { renderPreviewPage } from './page.ts';
 
 export interface PreviewServerOptions {
@@ -33,7 +37,14 @@ export async function startPreviewServer(
     throw new Error(`questspec serve: not a directory: ${input}`);
   }
   const files = await readSnbtDirectory(root);
-  const preview = buildQuestPreview(root, files, options.locale);
+  const source = buildQuestPreviewSource(root, files);
+
+  const previewFor = (requestedLocale?: string, requestedChapter?: string): QuestPreview => {
+    const locale = (requestedLocale ?? options.locale ?? 'en_us').trim().toLowerCase() || 'en_us';
+    return buildQuestPreviewForLocale(source, locale, requestedChapter);
+  };
+
+  const preview = previewFor(options.locale);
   if (preview.stats.chapters === 0) {
     throw new Error(`questspec serve: no readable FTB Quests chapters found in ${root}`);
   }
@@ -43,14 +54,14 @@ export async function startPreviewServer(
     loadPreviewAsset('theme.js', 'text/javascript; charset=utf-8'),
   ]);
   const page = renderPreviewPage(preview);
-  const previewJson = Buffer.from(JSON.stringify(preview));
   const assets = new Map<string, PreviewAsset>([
     ['/assets/app.css', stylesheet],
     ['/assets/app.js', javascript],
     ['/assets/theme.js', themeBootstrap],
   ]);
   const server = createServer((request, response) => {
-    const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
+    const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+    const path = url.pathname;
     response.setHeader(
       'Content-Security-Policy',
       "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src data:; base-uri 'none'; frame-ancestors 'none'",
@@ -70,11 +81,15 @@ export async function startPreviewServer(
       return;
     }
     if (path === '/preview.json') {
+      const selected = previewFor(
+        url.searchParams.get('locale') ?? undefined,
+        url.searchParams.get('chapter') ?? undefined,
+      );
       response.writeHead(200, {
         'Cache-Control': 'no-store',
         'Content-Type': 'application/json; charset=utf-8',
       });
-      response.end(request.method === 'HEAD' ? undefined : previewJson);
+      response.end(request.method === 'HEAD' ? undefined : Buffer.from(JSON.stringify(selected)));
       return;
     }
     const asset = assets.get(path);

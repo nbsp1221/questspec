@@ -65,7 +65,7 @@ export function PreviewHeader({
           Lang:
         </span>
         <select onChange={(event) => onLocaleChange(event.target.value)} value={locale}>
-          {Object.keys(preview.locales).map((key) => (
+          {preview.availableLocales.map((key) => (
             <option key={key} value={key}>
               {previewLocaleLabel(key)}
             </option>

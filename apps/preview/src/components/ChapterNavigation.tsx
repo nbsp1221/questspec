@@ -1,11 +1,11 @@
-import type { PreviewChapter, PreviewLocale } from '@questspec/core/preview/types';
+import type { PreviewChapterSummary, PreviewLocaleIndex } from '@questspec/core/preview/types';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { DomainIcon } from './DomainIcon.tsx';
 
 interface ChapterNavigationProps {
-  locale: PreviewLocale;
-  onSelect: (chapter: PreviewChapter) => void;
+  locale: PreviewLocaleIndex;
+  onSelect: (chapter: PreviewChapterSummary) => void;
   selectedChapterId: string | undefined;
 }
 
@@ -81,7 +81,7 @@ export function ChapterNavigation({
                         type="chapter"
                       />
                       <span className="chapter-row__title">{chapter.title}</span>
-                      <span className="chapter-row__count">{chapter.quests.length}</span>
+                      <span className="chapter-row__count">{chapter.questCount ?? 0}</span>
                     </button>
                   </li>
                 ))}

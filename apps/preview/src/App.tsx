@@ -18,55 +18,63 @@ interface PreviewAppProps {
 }
 
 export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
-  const [localeKey, setLocaleKey] = useState(preview.selectedLocale);
-  const locale = preview.locales[localeKey] ?? preview.locales[preview.selectedLocale];
-  const [chapterId, setChapterId] = useState(locale.chapters[0]?.id);
+  const [activePreview, setActivePreview] = useState(preview);
+  const localeRequestRef = useRef(0);
+  const localeKey = activePreview.selectedLocale;
+  const locale = activePreview.locale;
   const [selectedQuestId, setSelectedQuestId] = useState<string>();
+  const [loadError, setLoadError] = useState<string>();
   const [chaptersOpen, setChaptersOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const narrow = useMediaQuery('(max-width: 800px)');
   const theme = usePreviewTheme();
   const viewportMemoryRef = useRef<Map<string, Viewport> | null>(null);
   const viewportMemory = (viewportMemoryRef.current ??= new Map<string, Viewport>());
-  const chapter =
-    locale.chapters.find((candidate) => candidate.id === chapterId) ?? locale.chapters[0];
-  const allQuests = useMemo(
-    () => locale.chapters.flatMap((candidate) => candidate.quests),
-    [locale.chapters],
-  );
+  const chapter = activePreview.chapter;
+  const allQuests = useMemo(() => chapter?.quests ?? [], [chapter]);
   const quest = allQuests.find((candidate) => candidate.id === selectedQuestId);
-  const stats = useMemo(
-    () => ({
-      chapters: locale.chapters.length,
-      dependencies: allQuests.reduce(
-        (total, candidate) => total + candidate.dependencies.length,
-        0,
-      ),
-      groups: locale.groups.length,
-      quests: allQuests.length,
-    }),
-    [allQuests, locale.chapters.length, locale.groups.length],
-  );
 
   useEffect(() => {
     document.documentElement.lang = previewDocumentLanguage(localeKey);
   }, [localeKey]);
 
-  const changeLocale = (nextLocale: string): void => {
-    const next = preview.locales[nextLocale];
-    if (next === undefined) {
+  const loadPreview = async (
+    nextLocale: string,
+    nextChapter?: string,
+    nextQuest?: string,
+  ): Promise<void> => {
+    const request = ++localeRequestRef.current;
+    const parameters = new URLSearchParams({ locale: nextLocale });
+    if (nextChapter !== undefined) {
+      parameters.set('chapter', nextChapter);
+    }
+    const response = await fetch(`/preview.json?${parameters}`, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`Preview locale request failed with ${response.status}`);
+    }
+    const next = (await response.json()) as QuestPreview;
+    if (request !== localeRequestRef.current) {
       return;
     }
-    setLocaleKey(nextLocale);
-    setChapterId((current) =>
-      next.chapters.some((candidate) => candidate.id === current) ? current : next.chapters[0]?.id,
-    );
-    setSelectedQuestId(undefined);
+    setActivePreview(next);
+    setSelectedQuestId(nextQuest);
+  };
+
+  const requestPreview = (nextLocale: string, nextChapter?: string, nextQuest?: string): void => {
+    setLoadError(undefined);
+    void loadPreview(nextLocale, nextChapter, nextQuest).catch((error: unknown) => {
+      setLoadError(error instanceof Error ? error.message : 'Preview data could not be loaded.');
+    });
+  };
+
+  const changeLocale = (nextLocale: string): void => {
+    if (activePreview.availableLocales.includes(nextLocale)) {
+      requestPreview(nextLocale, chapter?.id);
+    }
   };
 
   const selectChapter = (nextChapterId: string): void => {
-    setChapterId(nextChapterId);
-    setSelectedQuestId(undefined);
+    requestPreview(localeKey, nextChapterId);
     setChaptersOpen(false);
   };
 
@@ -78,14 +86,15 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
   };
 
   const navigateToQuest = (id: string): void => {
-    const containingChapter = locale.chapters.find((candidate) =>
-      candidate.quests.some((candidateQuest) => candidateQuest.id === id),
-    );
-    if (containingChapter === undefined) {
+    const reference = activePreview.questIndex[id];
+    if (reference === undefined) {
       return;
     }
-    setChapterId(containingChapter.id);
-    setSelectedQuestId(id);
+    if (reference.chapterId === chapter?.id) {
+      setSelectedQuestId(id);
+    } else {
+      requestPreview(localeKey, reference.chapterId, id);
+    }
   };
 
   return (
@@ -97,10 +106,11 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
         onLocaleChange={changeLocale}
         onOpenChapters={() => setChaptersOpen(true)}
         onOpenInspector={() => setInspectorOpen(true)}
-        preview={preview}
-        stats={stats}
+        preview={activePreview}
+        stats={activePreview.stats}
         theme={theme}
       />
+      {loadError === undefined ? null : <p role="alert">{loadError}</p>}
       <div className="preview-layout">
         {narrow ? null : (
           <aside aria-label="Chapter navigation" className="chapter-rail">
@@ -120,7 +130,7 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
           ) : (
             <QuestGraph
               chapter={chapter}
-              diagnostics={preview.diagnostics}
+              diagnostics={activePreview.diagnostics}
               memoryKey={previewViewportKey(localeKey, chapter.id)}
               onSelect={selectQuest}
               selectedQuestId={selectedQuestId}
@@ -133,9 +143,10 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
           <aside aria-label="Quest inspector" className="inspector-rail">
             <QuestInspector
               allQuests={allQuests}
-              diagnostics={preview.diagnostics}
+              diagnostics={activePreview.diagnostics}
               onSelectQuest={navigateToQuest}
               quest={quest}
+              questIndex={activePreview.questIndex}
             />
           </aside>
         )}
@@ -179,10 +190,11 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
               <Dialog aria-label="Quest inspector" className="overlay-dialog" id="inspector-sheet">
                 <QuestInspector
                   allQuests={allQuests}
-                  diagnostics={preview.diagnostics}
+                  diagnostics={activePreview.diagnostics}
                   onClose={() => setInspectorOpen(false)}
                   onSelectQuest={navigateToQuest}
                   quest={quest}
+                  questIndex={activePreview.questIndex}
                 />
               </Dialog>
             </Modal>
