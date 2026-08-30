@@ -12,6 +12,7 @@ import {
   type PreviewTheme,
   isPreviewTheme,
 } from '../src/preview/client/theme.ts';
+import { usePreviewTheme } from '../src/preview/client/use-preview-theme.ts';
 
 interface ColorSchemeStub {
   prefer: (preference: PreviewTheme) => void;
@@ -63,6 +64,26 @@ function themeSwitch(): HTMLElement {
   return screen.getByRole('button', { name: 'Light theme' });
 }
 
+function ThemeToggleHarness(): React.JSX.Element {
+  return <ThemeToggle {...usePreviewTheme()} />;
+}
+
+function PreviewHeaderHarness({ preview }: { preview: QuestPreview }): React.JSX.Element {
+  return (
+    <PreviewHeader
+      chaptersOpen={false}
+      inspectorOpen={false}
+      locale="en_us"
+      onLocaleChange={vi.fn()}
+      onOpenChapters={vi.fn()}
+      onOpenInspector={vi.fn()}
+      preview={preview}
+      stats={preview.stats}
+      theme={usePreviewTheme()}
+    />
+  );
+}
+
 /** Runs an action and flushes the mutation observation that reports the theme. */
 async function settle(action: () => void): Promise<void> {
   action();
@@ -93,7 +114,7 @@ describe('preview theme state', () => {
   it('starts from the operating-system preference when nothing was chosen', async () => {
     stubColorScheme('light');
     await settle(() => {
-      render(<ThemeToggle />);
+      render(<ThemeToggleHarness />);
     });
 
     expect(documentTheme()).toBe('light');
@@ -104,7 +125,7 @@ describe('preview theme state', () => {
   it('starts dark when the operating system prefers dark', async () => {
     stubColorScheme('dark');
     await settle(() => {
-      render(<ThemeToggle />);
+      render(<ThemeToggleHarness />);
     });
 
     expect(documentTheme()).toBe('dark');
@@ -115,7 +136,7 @@ describe('preview theme state', () => {
     stubColorScheme('dark');
     window.localStorage.setItem(PREVIEW_THEME_STORAGE_KEY, 'light');
     await settle(() => {
-      render(<ThemeToggle />);
+      render(<ThemeToggleHarness />);
     });
     expect(documentTheme()).toBe('light');
 
@@ -123,7 +144,7 @@ describe('preview theme state', () => {
     document.documentElement.removeAttribute(PREVIEW_THEME_ATTRIBUTE);
     window.localStorage.setItem(PREVIEW_THEME_STORAGE_KEY, 'solarized');
     await settle(() => {
-      render(<ThemeToggle />);
+      render(<ThemeToggleHarness />);
     });
     expect(documentTheme()).toBe('dark');
   });
@@ -131,7 +152,7 @@ describe('preview theme state', () => {
   it('records an explicit choice, repaints the document, and survives a remount', async () => {
     stubColorScheme('dark');
     await settle(() => {
-      render(<ThemeToggle />);
+      render(<ThemeToggleHarness />);
     });
 
     await settle(() => fireEvent.click(themeSwitch()));
@@ -143,7 +164,7 @@ describe('preview theme state', () => {
     cleanup();
     document.documentElement.removeAttribute(PREVIEW_THEME_ATTRIBUTE);
     await settle(() => {
-      render(<ThemeToggle />);
+      render(<ThemeToggleHarness />);
     });
     expect(documentTheme()).toBe('light');
     expect(themeSwitch().getAttribute('aria-pressed')).toBe('true');
@@ -156,7 +177,7 @@ describe('preview theme state', () => {
   it('follows later system changes only until a choice is made', async () => {
     const scheme = stubColorScheme('dark');
     await settle(() => {
-      render(<ThemeToggle />);
+      render(<ThemeToggleHarness />);
     });
 
     await settle(() => scheme.prefer('light'));
@@ -180,18 +201,7 @@ describe('preview theme state', () => {
     };
     stubColorScheme('dark');
     await settle(() => {
-      render(
-        <PreviewHeader
-          chaptersOpen={false}
-          inspectorOpen={false}
-          locale="en_us"
-          onLocaleChange={vi.fn()}
-          onOpenChapters={vi.fn()}
-          onOpenInspector={vi.fn()}
-          preview={preview}
-          stats={preview.stats}
-        />,
-      );
+      render(<PreviewHeaderHarness preview={preview} />);
     });
 
     const control = themeSwitch();

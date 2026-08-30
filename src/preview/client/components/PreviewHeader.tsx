@@ -1,6 +1,7 @@
 import { List, PanelRight } from 'lucide-react';
 import { Button } from 'react-aria-components';
 import type { QuestPreview } from '../../types.ts';
+import type { PreviewThemeControl } from '../use-preview-theme.ts';
 import { previewLocaleLabel } from '../../locale.ts';
 import { DomainIcon } from './DomainIcon.tsx';
 import { ThemeToggle } from './ThemeToggle.tsx';
@@ -14,6 +15,7 @@ interface PreviewHeaderProps {
   onOpenInspector: () => void;
   preview: QuestPreview;
   stats: QuestPreview['stats'];
+  theme: PreviewThemeControl;
 }
 
 export function PreviewHeader({
@@ -25,6 +27,7 @@ export function PreviewHeader({
   onOpenInspector,
   preview,
   stats,
+  theme,
 }: PreviewHeaderProps): React.JSX.Element {
   const directoryName = preview.directory.split('/').filter(Boolean).at(-1) ?? 'Quest book';
   return (
@@ -69,7 +72,7 @@ export function PreviewHeader({
           ))}
         </select>
       </label>
-      <ThemeToggle />
+      <ThemeToggle {...theme} />
       <Button
         aria-controls={inspectorOpen ? 'inspector-sheet' : undefined}
         aria-expanded={inspectorOpen}

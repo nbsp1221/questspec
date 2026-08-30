@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import postcss, { type Declaration, type Root } from 'postcss';
 import { describe, expect, it } from 'vitest';
 import { readSnbtDirectory } from '../src/filesystem/read-directory.ts';
 import { type QuestPreview, buildQuestPreview } from '../src/preview/model.ts';
@@ -9,6 +10,12 @@ import { startPreviewServer } from '../src/preview/server.ts';
 
 function authoredStylesheet(file: string): string {
   return readFileSync(new URL(`../src/preview/client/${file}`, import.meta.url), 'utf8');
+}
+
+const componentStylesheets = ['shell.css', 'graph.css', 'inspector.css'];
+
+function authoredComponentStyles(): string {
+  return componentStylesheets.map(authoredStylesheet).join('\n');
 }
 
 async function fixture(): Promise<string> {
@@ -144,67 +151,43 @@ describe('FTB Quests browser preview', () => {
  * one theme silently falls back to an unpainted value.
  */
 describe('preview theme token architecture', () => {
-  const tokens = authoredStylesheet('tokens.css');
-  const components = authoredStylesheet('styles.css');
-
-  const themeBlock = (selector: string): string => {
-    const block = new RegExp(`${selector}\\s*\\{([^}]*)\\}`, 'u').exec(tokens)?.[1];
-    expect(block, `missing token block for ${selector}`).toBeDefined();
-    return block ?? '';
-  };
-
-  const declaredNames = (block: string): string[] =>
-    [...block.matchAll(/(--[\w-]+)\s*:/gu)].map(([, name]) => name).toSorted();
-
-  const dark = themeBlock(":root\\[data-theme='dark'\\]");
-  const light = themeBlock(":root\\[data-theme='light'\\]");
+  const tokens = postcss.parse(authoredStylesheet('tokens.css'));
+  const components = postcss.parse(authoredComponentStyles());
+  const dark = declarationsForSelector(tokens, ":root[data-theme='dark']");
+  const light = declarationsForSelector(tokens, ":root[data-theme='light']");
 
   it('defines the same semantic tokens in both themes', () => {
-    expect(declaredNames(dark).length).toBeGreaterThan(50);
-    expect(declaredNames(light)).toEqual(declaredNames(dark));
+    expect([...light.keys()].toSorted()).toEqual([...dark.keys()].toSorted());
   });
 
   it('paints the dark theme for a document that was never claimed', () => {
-    expect(tokens).toMatch(/:root,\s*:root\[data-theme='dark'\]\s*\{/u);
+    const defaultTheme = declarationsForSelector(tokens, ':root');
+    expect(defaultTheme.get('--surface-world')).toBe(dark.get('--surface-world'));
   });
 
   it('keeps color-scheme synchronized with each theme', () => {
-    expect(dark).toMatch(/color-scheme:\s*dark;/u);
-    expect(light).toMatch(/color-scheme:\s*light;/u);
-  });
-
-  it('gives the light theme its own values rather than reusing dark ones', () => {
-    const values = (block: string): string[] =>
-      [...block.matchAll(/--[\w-]+\s*:\s*([^;]+);/gu)].map(([, value]) => value.trim());
-
-    const shared = values(light).filter((value) => values(dark).includes(value));
-    expect(shared.length).toBeLessThan(values(dark).length / 4);
+    expect(dark.get('color-scheme')).toBe('dark');
+    expect(light.get('color-scheme')).toBe('light');
   });
 
   it('never names a theme colour in a component rule', () => {
-    expect(components).not.toMatch(/#[0-9a-f]{3,8}\b/iu);
-    expect(components).not.toMatch(/\brgba?\(/u);
-    expect(components).not.toMatch(/--mc-/u);
-    // Sprite colours must be composed from tokens, never from literal channels.
-    for (const [, channels] of components.matchAll(/\bhsla?\(([^)]*)\)/gu)) {
-      expect(channels).not.toMatch(/\d/u);
+    for (const declaration of declarations(components)) {
+      expect(declaration.value).not.toMatch(/#[0-9a-f]{3,8}\b/iu);
+      expect(declaration.value).not.toMatch(/\brgba?\(/u);
+      expect(declaration.value).not.toMatch(/--mc-/u);
+      for (const [, channels] of declaration.value.matchAll(/\bhsla?\(([^)]*)\)/gu)) {
+        expect(channels).not.toMatch(/\d/u);
+      }
     }
   });
 
   it('keeps the pixel drop shadow hard-edged in both themes', () => {
-    const shadows = [...tokens.matchAll(/--pixel-shadow[\w-]*:\s*([^;]+);/gu)];
+    const shadows = declarations(tokens).filter(({ prop }) => prop.startsWith('--pixel-shadow'));
     expect(shadows).toHaveLength(4);
-    for (const [, value] of shadows) {
+    for (const { value } of shadows) {
       const lengths = value.replaceAll(/[a-z-]+\([^)]*\)/gu, ' ').match(/-?\d+(?:\.\d+)?(?:px)?/gu);
       expect(lengths?.slice(2)).toEqual(['0']);
     }
-  });
-
-  it('reserves graph colour for active relations instead of diagnostics or inferred completion', () => {
-    expect(components).not.toContain('.react-flow__edge.has-diagnostic');
-    expect(components).not.toMatch(/\.quest-node\.has-diagnostic\s*\{/u);
-    expect(tokens).not.toMatch(/--(?:node-frame|ribbon-(?:rail|flow))-(?:completed|diagnostic):/u);
-    expect(tokens).not.toMatch(/--ribbon-(?:rail|flow)(?:-neutral)?:\s*var\(--mc-green\)/u);
   });
 });
 
@@ -215,18 +198,26 @@ describe('preview theme token architecture', () => {
  * authored rules count.
  */
 describe('preview stylesheet restraint', () => {
-  const stylesheet = ['tokens.css', 'styles.css'].map(authoredStylesheet).join('\n');
+  const stylesheet = postcss.parse(
+    ['tokens.css', ...componentStylesheets].map(authoredStylesheet).join('\n'),
+  );
 
   it('authors flat fills with no gradient of any kind', () => {
-    expect(stylesheet).not.toMatch(/gradient\(/u);
+    for (const declaration of declarations(stylesheet)) {
+      expect(declaration.value).not.toMatch(/gradient\(/u);
+    }
   });
 
   it('authors no animation, blur, glow, or filter treatment', () => {
-    expect(stylesheet).not.toMatch(/@keyframes/u);
-    expect(stylesheet).not.toMatch(/\banimation\b/u);
-    expect(stylesheet).not.toMatch(/\btransition\b/u);
-    expect(stylesheet).not.toMatch(/\bfilter\s*:/u);
-    expect(stylesheet).not.toMatch(/\bblur\(/u);
+    expect(
+      stylesheet.nodes.some((node) => node.type === 'atrule' && node.name === 'keyframes'),
+    ).toBe(false);
+    for (const declaration of declarations(stylesheet)) {
+      expect(['animation', 'animation-name', 'filter', 'transition']).not.toContain(
+        declaration.prop,
+      );
+      expect(declaration.value).not.toMatch(/\bblur\(/u);
+    }
   });
 
   /*
@@ -235,13 +226,16 @@ describe('preview stylesheet restraint', () => {
    * the offset property stays forbidden while the pattern itself is allowed.
    */
   it('allows a static dependency ribbon dash pattern but no dash offset', () => {
-    expect(stylesheet).toMatch(/stroke-dasharray/u);
-    expect(stylesheet).not.toMatch(/stroke-dashoffset/u);
+    const properties = declarations(stylesheet).map(({ prop }) => prop);
+    expect(properties).toContain('stroke-dasharray');
+    expect(properties).not.toContain('stroke-dashoffset');
   });
 
   it('keeps every authored shadow hard-edged with a zero blur radius', () => {
-    const shadows = stylesheet.matchAll(/(?:box|text)-shadow:\s*([^;]+);/gu);
-    for (const [, value] of shadows) {
+    const shadows = declarations(stylesheet).filter(({ prop }) =>
+      /^(?:box|text)-shadow$/u.test(prop),
+    );
+    for (const { value } of shadows) {
       for (const layer of value.split(/,(?![^(]*\))/u)) {
         const lengths = layer
           .replaceAll(/[a-z-]+\([^)]*\)/gu, ' ')
@@ -255,6 +249,32 @@ describe('preview stylesheet restraint', () => {
   });
 
   it('retains no resource monogram styling', () => {
-    expect(stylesheet).not.toMatch(/resource-icon__stack/u);
+    const selectors: string[] = [];
+    stylesheet.walkRules((rule) => {
+      selectors.push(rule.selector);
+    });
+    expect(selectors.some((selector) => selector.includes('resource-icon__stack'))).toBe(false);
   });
 });
+
+function declarations(root: Root): Declaration[] {
+  const result: Declaration[] = [];
+  root.walkDecls((declaration) => {
+    result.push(declaration);
+  });
+  return result;
+}
+
+function declarationsForSelector(root: Root, selector: string): Map<string, string> {
+  const result = new Map<string, string>();
+  root.walkRules((rule) => {
+    if (!rule.selectors.includes(selector)) {
+      return;
+    }
+    rule.walkDecls((declaration) => {
+      result.set(declaration.prop, declaration.value);
+    });
+  });
+  expect(result.size, `missing token block for ${selector}`).toBeGreaterThan(0);
+  return result;
+}

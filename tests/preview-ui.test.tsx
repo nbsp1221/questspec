@@ -20,6 +20,7 @@ import {
   shapeClass,
 } from '../src/preview/client/geometry.ts';
 import { resolveDomainIcon } from '../src/preview/client/icon-resolver.ts';
+import { createQuestFlowElements } from '../src/preview/client/quest-flow-model.ts';
 import { previewDocumentLanguage, previewLocaleLabel } from '../src/preview/locale.ts';
 
 const firstQuest: PreviewQuest = {
@@ -107,6 +108,32 @@ describe('preview UI model boundaries', () => {
       zoomOnPinch: true,
       zoomOnScroll: true,
     });
+  });
+
+  it('projects relation and diagnostic state without coupling their visual semantics', () => {
+    const callbacks = {
+      onActivate: vi.fn(),
+      onBlur: vi.fn(),
+      onFocus: vi.fn(),
+      onHover: vi.fn(),
+      onNavigate: vi.fn(),
+    };
+    const projection = createQuestFlowElements({
+      activeQuestId: firstQuest.id,
+      callbacks,
+      chapter: { ...locale.chapters[0], quests: [firstQuest, secondQuest] },
+      diagnostics: [{ message: 'Example', questId: secondQuest.id, severity: 'warning' }],
+      focusedId: firstQuest.id,
+      matchingQuestIds: new Set([firstQuest.id, secondQuest.id]),
+      queryActive: false,
+      selectedQuestId: firstQuest.id,
+    });
+
+    expect(projection.nodes.map(({ data }) => [data.relation, data.diagnostic])).toEqual([
+      ['selected', false],
+      ['dependent', true],
+    ]);
+    expect(projection.edges[0]?.className).toBe('relation-dependent');
   });
 
   it('clips straight edges from measured centers to every supported node silhouette', () => {
@@ -247,6 +274,7 @@ describe('preview components', () => {
         onOpenInspector={vi.fn()}
         preview={preview}
         stats={preview.stats}
+        theme={{ setTheme: vi.fn(), theme: 'dark' }}
       />,
     );
     expect(screen.getByRole('option', { name: 'English (US)' })).toBeDefined();

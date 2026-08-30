@@ -35,8 +35,12 @@ export function usePreviewTheme(): PreviewThemeControl {
     if (storedPreviewTheme() !== undefined) {
       return;
     }
-    return watchSystemPreviewTheme(applyPreviewTheme);
-  }, [theme]);
+    return watchSystemPreviewTheme((nextTheme) => {
+      if (storedPreviewTheme() === undefined) {
+        applyPreviewTheme(nextTheme);
+      }
+    });
+  }, []);
 
   const setTheme = useCallback((next: PreviewTheme): void => {
     storePreviewTheme(next);

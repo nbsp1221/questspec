@@ -10,6 +10,7 @@ import { QuestGraph } from './components/QuestGraph.tsx';
 import { QuestInspector } from './components/QuestInspector.tsx';
 import { previewViewportKey } from './geometry.ts';
 import { useMediaQuery } from './use-media-query.ts';
+import { usePreviewTheme } from './use-preview-theme.ts';
 
 interface PreviewAppProps {
   preview: QuestPreview;
@@ -23,6 +24,7 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
   const [chaptersOpen, setChaptersOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const narrow = useMediaQuery('(max-width: 800px)');
+  const theme = usePreviewTheme();
   const viewportMemoryReference = useRef<Map<string, Viewport> | null>(null);
   const viewportMemory = (viewportMemoryReference.current ??= new Map<string, Viewport>());
   const chapter =
@@ -96,6 +98,7 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
         onOpenInspector={() => setInspectorOpen(true)}
         preview={preview}
         stats={stats}
+        theme={theme}
       />
       <div className="preview-layout">
         {narrow ? null : (
@@ -121,6 +124,7 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
               memoryKey={previewViewportKey(localeKey, chapter.id)}
               onSelect={selectQuest}
               selectedQuestId={selectedQuestId}
+              theme={theme.theme}
               viewportMemory={viewportMemory}
             />
           )}

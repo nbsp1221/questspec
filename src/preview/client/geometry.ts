@@ -40,6 +40,32 @@ export function questRelations(
   return relations;
 }
 
+export function directionalQuest(
+  quests: readonly PreviewQuest[],
+  currentId: string,
+  key: string,
+): PreviewQuest | undefined {
+  const current = quests.find((quest) => quest.id === currentId);
+  if (current === undefined) {
+    return undefined;
+  }
+  const horizontal = key === 'ArrowLeft' || key === 'ArrowRight';
+  const direction = key === 'ArrowLeft' || key === 'ArrowUp' ? -1 : 1;
+  return quests
+    .filter((quest) => quest.id !== currentId)
+    .map((quest) => {
+      const primary = horizontal ? quest.x - current.x : quest.y - current.y;
+      const secondary = horizontal ? quest.y - current.y : quest.x - current.x;
+      return {
+        primary: primary * direction,
+        quest,
+        score: Math.abs(primary) + Math.abs(secondary) * 1.5,
+      };
+    })
+    .filter(({ primary }) => primary > 0)
+    .sort((left, right) => left.score - right.score)[0]?.quest;
+}
+
 export function shapeClass(shape: string): QuestShape {
   const normalized = shape.toLowerCase();
   if (normalized === 'none' || normalized.includes('frameless')) {
