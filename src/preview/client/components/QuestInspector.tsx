@@ -73,8 +73,8 @@ export function QuestInspector({
               </div>
               {quest.description.filter((line) => line.trim() !== '').length === 0 ? null : (
                 <div className="quest-sheet__body">
-                  {quest.description.map((line, index) => (
-                    <p key={`${line}-${index}`}>{line}</p>
+                  {withOccurrenceKeys(quest.description, (line) => line).map(({ key, value }) => (
+                    <p key={key}>{value}</p>
                   ))}
                 </div>
               )}
@@ -128,11 +128,12 @@ export function QuestInspector({
               <p>Every readable preview structure loaded cleanly.</p>
             </div>
           ) : (
-            diagnostics.map((diagnostic, index) => (
-              <article
-                className={`diagnostic diagnostic--${diagnostic.severity}`}
-                key={`${diagnostic.file ?? ''}-${diagnostic.message}-${index}`}
-              >
+            withOccurrenceKeys(
+              diagnostics,
+              (diagnostic) =>
+                `${diagnostic.severity}:${diagnostic.file ?? ''}:${diagnostic.questId ?? ''}:${diagnostic.message}`,
+            ).map(({ key, value: diagnostic }) => (
+              <article className={`diagnostic diagnostic--${diagnostic.severity}`} key={key}>
                 <strong>{diagnostic.severity}</strong>
                 <p>{diagnostic.message}</p>
                 {diagnostic.file ? <code>{diagnostic.file}</code> : null}
@@ -199,8 +200,11 @@ function EntrySection({
         <span>{entries.length}</span>
       </h3>
       <ul className="entry-list">
-        {entries.map((entry, index) => (
-          <li className="entry-row" key={`${entry.type}-${entry.label}-${index}`}>
+        {withOccurrenceKeys(
+          entries,
+          (entry) => `${entry.type}:${entry.label}:${entry.icon ?? ''}:${entry.count ?? 1}`,
+        ).map(({ key, value: entry }) => (
+          <li className="entry-row" key={key}>
             <span className="item-slot">
               <DomainIcon decorative icon={entry.icon} label={entry.label} type={entry.type} />
               {entry.count && entry.count !== 1 ? (
@@ -216,6 +220,19 @@ function EntrySection({
       </ul>
     </section>
   );
+}
+
+function withOccurrenceKeys<T>(
+  values: readonly T[],
+  identify: (value: T) => string,
+): { key: string; value: T }[] {
+  const occurrences = new Map<string, number>();
+  return values.map((value) => {
+    const identity = identify(value);
+    const occurrence = occurrences.get(identity) ?? 0;
+    occurrences.set(identity, occurrence + 1);
+    return { key: `${identity}:${occurrence}`, value };
+  });
 }
 
 function humanize(value: string): string {

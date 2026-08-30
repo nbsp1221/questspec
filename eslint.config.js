@@ -6,6 +6,7 @@ export default retn0(
   {
     environments: ['node', 'browser'],
     perfectionist: true,
+    react: true,
   },
   eslintConfigOxlint,
   globalIgnores(['coverage/**', 'dist/**']),

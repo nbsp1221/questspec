@@ -7,7 +7,7 @@ import {
   type Viewport,
 } from '@xyflow/react';
 import { LocateFixed, Search, ZoomIn, ZoomOut } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Button } from 'react-aria-components';
 import type { PreviewChapter, PreviewDiagnostic } from '../../types.ts';
 import type { PreviewTheme } from '../theme.ts';
@@ -42,7 +42,7 @@ const edgeTypes = { quest: QuestEdge } satisfies EdgeTypes;
 
 export function QuestGraph(props: QuestGraphProps): React.JSX.Element {
   return (
-    <ReactFlowProvider>
+    <ReactFlowProvider key={props.memoryKey}>
       <QuestGraphInner {...props} />
     </ReactFlowProvider>
   );
@@ -87,14 +87,6 @@ function QuestGraphInner({
     nodeCount: chapter.quests.length,
     viewportMemory,
   });
-
-  useEffect(() => {
-    setFocusedId((current) =>
-      chapter.quests.some((quest) => quest.id === current) ? current : chapter.quests[0]?.id,
-    );
-    setFocusPathId(undefined);
-    setHoveredId(undefined);
-  }, [chapter]);
 
   const navigate = useCallback(
     (id: string, key: string): void => {

@@ -25,8 +25,8 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const narrow = useMediaQuery('(max-width: 800px)');
   const theme = usePreviewTheme();
-  const viewportMemoryReference = useRef<Map<string, Viewport> | null>(null);
-  const viewportMemory = (viewportMemoryReference.current ??= new Map<string, Viewport>());
+  const viewportMemoryRef = useRef<Map<string, Viewport> | null>(null);
+  const viewportMemory = (viewportMemoryRef.current ??= new Map<string, Viewport>());
   const chapter =
     locale.chapters.find((candidate) => candidate.id === chapterId) ?? locale.chapters[0];
   const allQuests = useMemo(
@@ -120,7 +120,6 @@ export function PreviewApp({ preview }: PreviewAppProps): React.JSX.Element {
             <QuestGraph
               chapter={chapter}
               diagnostics={preview.diagnostics}
-              key={`${localeKey}:${chapter.id}`}
               memoryKey={previewViewportKey(localeKey, chapter.id)}
               onSelect={selectQuest}
               selectedQuestId={selectedQuestId}
