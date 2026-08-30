@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   PreviewLocale,
@@ -12,11 +11,7 @@ import { ChapterNavigation } from '../apps/preview/src/components/ChapterNavigat
 import { PreviewHeader } from '../apps/preview/src/components/PreviewHeader.tsx';
 import { GRAPH_INTERACTION_PROPS } from '../apps/preview/src/components/QuestGraph.tsx';
 import { QuestInspector } from '../apps/preview/src/components/QuestInspector.tsx';
-import {
-  QUEST_TOOLTIP_DELAY_MS,
-  type QuestNodeData,
-  QuestTokenButton,
-} from '../apps/preview/src/components/QuestNode.tsx';
+import { type QuestNodeData, QuestTokenButton } from '../apps/preview/src/components/QuestNode.tsx';
 import {
   FTB_QUEST_SHAPES,
   authoredPosition,
@@ -263,7 +258,7 @@ describe('preview components', () => {
       'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
     );
     expect(button.getAttribute('title')).toBeNull();
-    expect(button.querySelector('.quest-tip')?.textContent).toContain('Punch a Tree');
+    expect(screen.queryByRole('tooltip')).toBeNull();
 
     fireEvent.pointerDown(button, { button: 0 });
     fireEvent.pointerUp(button, { button: 0 });
@@ -283,8 +278,7 @@ describe('preview components', () => {
     expect(activate).toHaveBeenNthCalledWith(3, firstQuest.id);
   });
 
-  it('keeps the quest tooltip timer stable across decorative child boundaries', async () => {
-    vi.useFakeTimers();
+  it('exposes an immediate accessible tooltip without disturbing graph hover state', async () => {
     const onHover = vi.fn();
     const data: QuestNodeData = {
       diagnostic: false,
@@ -309,19 +303,23 @@ describe('preview components', () => {
     expect(socket).not.toBeNull();
 
     fireEvent.pointerOver(button, { relatedTarget: document.body });
-    await act(() => vi.advanceTimersByTime(40));
     fireEvent.pointerOut(frame!, { relatedTarget: face });
     fireEvent.pointerOver(face!, { relatedTarget: frame });
-    await act(() => vi.advanceTimersByTime(40));
     fireEvent.pointerOut(face!, { relatedTarget: socket });
     fireEvent.pointerOver(socket!, { relatedTarget: face });
-    await act(() => vi.advanceTimersByTime(QUEST_TOOLTIP_DELAY_MS - 80));
-    expect(button.classList.contains('is-tooltip-visible')).toBe(true);
     expect(onHover).toHaveBeenCalledTimes(1);
     expect(onHover).toHaveBeenLastCalledWith(firstQuest.id);
 
+    fireEvent.keyDown(document.body, { code: 'Tab', key: 'Tab' });
+    button.focus();
+    const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip.textContent).toContain('Punch a Tree');
+    expect(button.getAttribute('aria-describedby')).toBe(tooltip.id);
+
+    fireEvent.keyDown(button, { key: 'Escape' });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+
     fireEvent.pointerOut(button, { relatedTarget: document.body });
-    expect(button.classList.contains('is-tooltip-visible')).toBe(false);
     expect(onHover).toHaveBeenLastCalledWith(undefined);
   });
 

@@ -1,7 +1,7 @@
 import type { PreviewQuest } from '@questspec/core/preview/types';
 import type { CSSProperties, FocusEvent, KeyboardEvent, MouseEvent, PointerEvent } from 'react';
+import { Tooltip, TooltipTrigger } from '@questspec/ui/components/tooltip';
 import { Handle, type Node, type NodeProps, Position } from '@xyflow/react';
-import { useEffect, useRef, useState } from 'react';
 import { type QuestRelation, resolveQuestShape, shapeClipPath } from '../geometry.ts';
 import { DomainIcon } from './DomainIcon.tsx';
 
@@ -27,8 +27,6 @@ const CENTER_HANDLE_STYLE = {
   top: '50%',
   transform: 'translate(-50%, -50%)',
 };
-
-export const QUEST_TOOLTIP_DELAY_MS = 120;
 
 export function QuestNode({ data }: NodeProps<QuestFlowNode>): React.JSX.Element {
   return (
@@ -56,8 +54,6 @@ export function QuestNode({ data }: NodeProps<QuestFlowNode>): React.JSX.Element
 
 export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.Element {
   const { quest } = data;
-  const [tooltipVisible, setTooltipVisible] = useState(false);
-  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const shape = resolveQuestShape(quest.shape);
   const silhouette = shapeClipPath(shape);
   const optional = quest.optional ? ', optional' : '';
@@ -83,13 +79,6 @@ export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.E
     }
   };
 
-  const cancelTooltipTimer = (): void => {
-    if (tooltipTimerRef.current !== undefined) {
-      clearTimeout(tooltipTimerRef.current);
-      tooltipTimerRef.current = undefined;
-    }
-  };
-
   const pointerStayedInside = (event: PointerEvent<HTMLButtonElement>): boolean =>
     event.relatedTarget instanceof globalThis.Node &&
     event.currentTarget.contains(event.relatedTarget);
@@ -99,13 +88,6 @@ export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.E
       return;
     }
     data.onHover(quest.id);
-    if (tooltipVisible || tooltipTimerRef.current !== undefined) {
-      return;
-    }
-    tooltipTimerRef.current = setTimeout(() => {
-      tooltipTimerRef.current = undefined;
-      setTooltipVisible(true);
-    }, QUEST_TOOLTIP_DELAY_MS);
   };
 
   const onPointerOut = (event: PointerEvent<HTMLButtonElement>): void => {
@@ -113,59 +95,50 @@ export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.E
       return;
     }
     data.onHover(undefined);
-    cancelTooltipTimer();
-    setTooltipVisible(false);
   };
 
-  useEffect(
-    () => () => {
-      if (tooltipTimerRef.current !== undefined) {
-        clearTimeout(tooltipTimerRef.current);
-      }
-    },
-    [],
-  );
-
   return (
-    <button
-      aria-label={`${quest.title}${optional}${relationship}${data.diagnostic ? ', has diagnostic' : ''}`}
-      aria-pressed={data.selected}
-      className={`nodrag nopan quest-node quest-node--${shape} relation-${data.relation}${data.dimmed ? ' is-dimmed' : ''}${data.diagnostic ? ' has-diagnostic' : ''}${tooltipVisible ? ' is-tooltip-visible' : ''}`}
-      data-quest-id={quest.id}
-      onBlur={onBlur}
-      onClick={activate}
-      onFocus={() => data.onFocus(quest.id)}
-      onKeyDown={onKeyDown}
-      onPointerOut={onPointerOut}
-      onPointerOver={onPointerOver}
-      style={style}
-      tabIndex={data.focused ? 0 : -1}
-      type="button"
-    >
-      <span aria-hidden="true" className="quest-node__plate" />
-      <span aria-hidden="true" className="quest-node__frame">
-        <span className="quest-node__face">
-          <span className="quest-node__socket">
-            <DomainIcon
-              decorative
-              icon={quest.icon}
-              label={quest.title}
-              type={quest.tasks[0]?.type}
-            />
+    <TooltipTrigger closeDelay={100} delay={0}>
+      <button
+        aria-label={`${quest.title}${optional}${relationship}${data.diagnostic ? ', has diagnostic' : ''}`}
+        aria-pressed={data.selected}
+        className={`nodrag nopan quest-node quest-node--${shape} relation-${data.relation}${data.dimmed ? ' is-dimmed' : ''}${data.diagnostic ? ' has-diagnostic' : ''}`}
+        data-quest-id={quest.id}
+        onBlur={onBlur}
+        onClick={activate}
+        onFocus={() => data.onFocus(quest.id)}
+        onKeyDown={onKeyDown}
+        onPointerOut={onPointerOut}
+        onPointerOver={onPointerOver}
+        style={style}
+        tabIndex={data.focused ? 0 : -1}
+        type="button"
+      >
+        <span aria-hidden="true" className="quest-node__plate" />
+        <span aria-hidden="true" className="quest-node__frame">
+          <span className="quest-node__face">
+            <span className="quest-node__socket">
+              <DomainIcon
+                decorative
+                icon={quest.icon}
+                label={quest.title}
+                type={quest.tasks[0]?.type}
+              />
+            </span>
           </span>
         </span>
-      </span>
-      {quest.optional ? (
-        <span aria-hidden="true" className="quest-node__mark quest-node__mark--optional">
-          ?
-        </span>
-      ) : null}
-      {data.diagnostic ? (
-        <span aria-hidden="true" className="quest-node__mark quest-node__mark--diagnostic">
-          !
-        </span>
-      ) : null}
-      <span aria-hidden="true" className="quest-tip">
+        {quest.optional ? (
+          <span aria-hidden="true" className="quest-node__mark quest-node__mark--optional">
+            ?
+          </span>
+        ) : null}
+        {data.diagnostic ? (
+          <span aria-hidden="true" className="quest-node__mark quest-node__mark--diagnostic">
+            !
+          </span>
+        ) : null}
+      </button>
+      <Tooltip className="quest-tip" offset={9} showArrow={false}>
         <span className="quest-tip__title">{quest.title}</span>
         {quest.tasks.length === 0 ? null : (
           <span className="quest-tip__line">
@@ -176,7 +149,7 @@ export function QuestTokenButton({ data }: { data: QuestNodeData }): React.JSX.E
           </span>
         )}
         {quest.optional ? <span className="quest-tip__optional">Optional</span> : null}
-      </span>
-    </button>
+      </Tooltip>
+    </TooltipTrigger>
   );
 }
