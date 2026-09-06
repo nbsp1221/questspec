@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import pkg from '../package.json' with { type: 'json' };
 
-const cliEntry = fileURLToPath(new URL('../src/index.ts', import.meta.url));
+const cliEntry = fileURLToPath(new URL('../apps/cli/src/index.ts', import.meta.url));
 
 function runCli(args: string[], cwd?: string): { stderr: string; stdout: string; status: number } {
   const result = spawnSync(process.execPath, [cliEntry, ...args], {

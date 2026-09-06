@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { Questbook } from '../../src/ir/questbook.ts';
-import { validateQuestbook, validateQuestbookWithGraph } from '../../src/validation/index.ts';
+import type { Questbook } from '../../packages/core/src/ir/questbook.ts';
+import {
+  validateQuestbook,
+  validateQuestbookWithGraph,
+} from '../../packages/core/src/validation/index.ts';
 import { createQuestbookFixture } from '../helpers/questbook.ts';
 
 function questbookFor(dependencies: Record<string, string[]>): Questbook {

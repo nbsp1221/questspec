@@ -1,0 +1,21 @@
+/*
+ * QuestSpec browser preview presentation.
+ *
+ * The preview imitates the look of the in-game FTB Quests screen: GUI panels
+ * with hard one-pixel edges, bitmap-style text with a one-pixel drop shadow,
+ * item-slot bevels, and green segmented dependency ribbons drawn over a flat
+ * backdrop. Every fill is a flat colour, every measurement is a whole pixel,
+ * and nothing is animated, blurred, glowed, or graded, because in-game GUI art
+ * has none of that either.
+ *
+ * Colours live in tokens.css. Rules here name semantic tokens only, so both
+ * themes share one set of component rules.
+ */
+
+@import '@xyflow/react/dist/style.css';
+@import '@questspec/ui/styles/globals.css';
+@import './tokens.css';
+
+@import './shell.css';
+@import './graph.css';
+@import './inspector.css';

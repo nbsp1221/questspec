@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createResourceCatalog,
   validateQuestbookResources,
-} from '../../src/validation/resources.ts';
+} from '../../packages/core/src/validation/resources.ts';
 import { createQuestbookFixture } from '../helpers/questbook.ts';
 
 describe('artifact-aware resource validation', () => {

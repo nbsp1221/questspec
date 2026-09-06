@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { Questbook } from '../../src/ir/questbook.ts';
-import { queryReachability } from '../../src/graph/query.ts';
-import { buildQuestGraph } from '../../src/graph/quest-graph.ts';
-import { validateQuestbookWithGraph } from '../../src/validation/questbook.ts';
+import type { Questbook } from '../../packages/core/src/ir/questbook.ts';
+import { queryReachability } from '../../packages/core/src/graph/query.ts';
+import { buildQuestGraph } from '../../packages/core/src/graph/quest-graph.ts';
+import { validateQuestbookWithGraph } from '../../packages/core/src/validation/questbook.ts';
 import { createQuestbookFixture } from '../helpers/questbook.ts';
 
 function questbookFor(dependencies: Record<string, string[]>): Questbook {

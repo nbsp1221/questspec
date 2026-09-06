@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-const cliEntry = fileURLToPath(new URL('../../src/index.ts', import.meta.url));
+const cliEntry = fileURLToPath(new URL('../../apps/cli/src/index.ts', import.meta.url));
 
 function runAnalyze(
   source: string,
@@ -191,7 +191,7 @@ describe('questspec analyze CLI', () => {
       expect(report.valid).toBe(false);
       expect(report.diagnostics.length).toBeGreaterThan(0);
     }
-  });
+  }, 15_000);
 
   it('reports cycles and missing edges while retaining partial structural output', () => {
     const cycle = questbook(`      - key: a

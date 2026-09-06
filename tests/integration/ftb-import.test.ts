@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { parseSnbt } from '../../src/snbt/parser.ts';
-import { writeSnbt } from '../../src/snbt/writer.ts';
+import { parseSnbt } from '../../packages/core/src/snbt/parser.ts';
+import { writeSnbt } from '../../packages/core/src/snbt/writer.ts';
 import {
   type FtbQuestbookImportError,
   decodeFtbQuests2101,
-} from '../../src/targets/ftbquests-2101.1.33/decode.ts';
-import { compileFtbQuests2101 } from '../../src/targets/ftbquests-2101.1.33/encode.ts';
+} from '../../packages/core/src/targets/ftbquests-2101.1.33/decode.ts';
+import { compileFtbQuests2101 } from '../../packages/core/src/targets/ftbquests-2101.1.33/encode.ts';
 import { createQuestbookFixture } from '../helpers/questbook.ts';
 
 describe('FTB Quests 2101.1.33 import', () => {

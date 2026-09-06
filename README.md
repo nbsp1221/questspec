@@ -97,6 +97,7 @@ questspec compile <source> --output <directory> [--id-map <file>] [--resources <
 questspec import <directory> --output <source> [--id-map <file>] [--force] [--json]
 questspec diff <source> <directory> [--id-map <file>] [--json]
 questspec analyze <source> [--from <quest>] [--to <quest>] [--direction <dependents|dependencies>] [--max-depth <integer>] [--json]
+questspec serve <quest-directory> [--locale <locale>] [--port <port>]
 ```
 
 `validate` checks YAML syntax, the public schema, identities, dependency cycles and references, localization, the exact target profile, and optionally resources.
@@ -108,6 +109,10 @@ questspec analyze <source> [--from <quest>] [--to <quest>] [--direction <depende
 `diff` compiles the source, imports both sides through the target adapter, and compares semantic content rather than whitespace or omitted runtime defaults.
 
 `analyze` reports the structural quest dependency graph. A dependency declaration is represented as a directed edge from prerequisite to dependent, so `--direction dependents` answers which quests can structurally follow a quest and `--direction dependencies` answers which quests structurally precede it. `--from` alone reports reflexive reachability with minimum edge distances; adding `--to` reports one deterministic shortest structural path. `--max-depth` is an inclusive edge bound for reachability.
+
+`serve` reads an FTB Quests persistence directory directly and starts a read-only preview on `127.0.0.1`. The browser keeps chapter grouping, available localization, authored quest positions and shapes, dependencies, and task/reward context visible without requiring QuestSpec YAML or launching Minecraft. Use `--locale` to choose the initial language and `--port` when a stable loopback port is useful.
+
+The preview ships dark and light themes of the same game-interface presentation. It follows the operating-system colour-scheme preference until the header switch is used, then remembers that explicit choice across reloads.
 
 This is structural analysis, not a simulation of FTB Quests runtime unlocks or player progression. Reachability does not claim that a quest is startable or unlockable: dependency requirements, thresholds, optional state, branch exclusions, tasks, rewards, team state, and other runtime effects are outside this graph contract. Cycles and missing dependency endpoints still produce a report so the valid structural portion can be inspected, but the command exits with status 1.
 
@@ -186,6 +191,25 @@ item:
 The `snbt` wrapper is intentional: it preserves byte, int, long, float, double, list, and compound distinctions that YAML scalar inference would otherwise erase. Invalid or trailing SNBT is rejected at its exact source path.
 
 Questspec does not preserve arbitrary unknown FTB data. Unsupported built-in, addon, inline-table, recursive-table, and legacy item-NBT constructs fail closed instead of being silently discarded.
+
+## Repository architecture
+
+The repository is a pnpm workspace orchestrated by Turborepo, but it still publishes one `questspec` CLI package. Workspace boundaries keep development concerns separate; the root build assembles their outputs into the existing `dist` package contract.
+
+```text
+apps/
+  cli/       command-line and loopback HTTP entry points
+  preview/   browser application and quest-specific presentation
+packages/
+  core/      SNBT, IR, validation, graph, target adapters, and preview data model
+  ui/        shared shadcn React Aria primitives and semantic design tokens
+scripts/     build and single-package assembly
+tests/       cross-workspace product and package contracts
+```
+
+Dependency flow is one-way: `apps/cli` and `apps/preview` consume `packages/core`; the preview also consumes `packages/ui`. Core never imports either application or UI code. Quest-specific graph components stay in the preview application, while only reusable interaction primitives and theme vocabulary belong in the UI package.
+
+`pnpm build` runs the application builds through Turborepo, then copies the CLI executable and browser assets into root `dist`. `pnpm pack` therefore continues to produce one installable package with one `questspec` binary and an embedded read-only browser preview.
 
 ## Development
 

@@ -1,0 +1,458 @@
+/* ------------------------------------------------------------ quest view */
+
+.quest-workspace {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.chapter-bar {
+  align-items: center;
+  background: var(--surface-panel);
+  border-bottom: 1px solid var(--edge-hard);
+  box-shadow: inset 0 -1px 0 var(--edge-soft);
+  display: flex;
+  flex: none;
+  gap: 9px;
+  min-height: 38px;
+  padding: 5px 8px;
+}
+
+.chapter-bar__identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  min-width: 0;
+}
+
+.chapter-bar__title {
+  color: var(--text-strong);
+  font-size: 15px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: var(--pixel-shadow-strong);
+  white-space: nowrap;
+}
+
+.chapter-bar__meta {
+  align-self: center;
+  color: var(--text-faint);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.graph-search {
+  margin-left: auto;
+  position: relative;
+  width: 210px;
+}
+
+.graph-search__status {
+  color: var(--accent-highlight);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.graph-search__status.is-empty {
+  color: var(--accent-danger);
+}
+
+.graph-canvas {
+  background: var(--surface-canvas);
+  flex: 1;
+  min-height: 0;
+  outline-offset: -3px;
+  position: relative;
+}
+
+.graph-tools {
+  display: grid;
+  gap: 3px;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 6;
+}
+
+.status-bar {
+  align-items: center;
+  background: var(--surface-status);
+  border-top: 1px solid var(--edge-hard);
+  bottom: 0;
+  box-shadow: inset 0 1px 0 var(--edge-soft);
+  color: var(--text-muted);
+  display: flex;
+  font-size: 11px;
+  gap: 14px;
+  left: 0;
+  padding: 3px 8px;
+  position: absolute;
+  right: 0;
+  z-index: 5;
+}
+
+.status-bar__cell {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.status-bar__hint {
+  color: var(--text-faint);
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* React Flow chrome is neutralised so only the quest art shows. */
+.react-flow {
+  background: transparent;
+}
+
+.react-flow__pane {
+  cursor: default;
+}
+
+/*
+ * The attribution stays visible above the status bar; React Flow positions it
+ * with a two-class panel rule, so the override has to match that specificity.
+ */
+.react-flow__attribution.bottom {
+  background: transparent;
+  bottom: 24px;
+  margin: 0 6px 0 0;
+  padding: 0;
+}
+
+.react-flow__attribution a {
+  color: var(--text-faint);
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  text-decoration: none;
+}
+
+.quest-handle {
+  background: none;
+  border: 0;
+  height: 1px;
+  min-height: 0;
+  min-width: 0;
+  opacity: 0;
+  width: 1px;
+}
+
+/*
+ * React Flow writes an inline z-index on every node wrapper, so raising the
+ * hovered or selected quest above its neighbours needs !important.
+ */
+.react-flow__node:hover,
+.react-flow__node:has(:focus-visible),
+.react-flow__node:has([aria-pressed='true']) {
+  z-index: 30 !important;
+}
+
+/* ------------------------------------------------------------ quest node */
+
+.quest-node {
+  --frame: var(--node-frame);
+  --face: var(--node-face);
+  --plate: transparent;
+  --plate-edge: transparent;
+
+  background: none;
+  border: 0;
+  display: block;
+  height: 100%;
+  padding: 0;
+  position: relative;
+  width: 100%;
+}
+
+/* All descendants are visual decoration; the button is the sole pointer target. */
+.quest-node * {
+  pointer-events: none;
+}
+
+.quest-node__plate {
+  background: var(--plate);
+  border: 2px solid var(--plate-edge);
+  inset: -7px;
+  position: absolute;
+}
+
+.quest-node__frame {
+  background: var(--frame);
+  clip-path: var(--silhouette, none);
+  display: block;
+  inset: 0;
+  position: absolute;
+}
+
+.quest-node__face {
+  background: var(--face);
+  clip-path: var(--silhouette, none);
+  display: grid;
+  inset: 2px;
+  place-items: center;
+  position: absolute;
+}
+
+.quest-node__socket {
+  display: grid;
+  height: 66.6667%;
+  place-items: center;
+  width: 66.6667%;
+}
+
+.quest-node__socket .resource-icon {
+  height: 100%;
+  width: 100%;
+}
+
+.quest-node--circle .quest-node__frame,
+.quest-node--circle .quest-node__face {
+  border-radius: 50%;
+}
+
+.quest-node--none .quest-node__frame,
+.quest-node--none .quest-node__face {
+  background: none;
+}
+
+.quest-node.relation-prerequisite {
+  --frame: var(--node-frame-prerequisite);
+  --plate: var(--node-plate-prerequisite);
+  --plate-edge: var(--node-plate-edge-prerequisite);
+}
+
+.quest-node.relation-dependent {
+  --frame: var(--node-frame-dependent);
+  --plate: var(--node-plate-dependent);
+  --plate-edge: var(--node-plate-edge-dependent);
+}
+
+.quest-node.relation-selected {
+  --frame: var(--node-frame-selected);
+  --face: var(--node-face-selected);
+  --plate: var(--node-plate-selected);
+  --plate-edge: var(--node-plate-edge-selected);
+}
+
+.quest-node:hover {
+  --frame: var(--node-frame-hover);
+}
+
+.quest-node.is-dimmed {
+  opacity: var(--node-dimmed-opacity);
+}
+
+.quest-node__mark {
+  align-items: center;
+  border: 1px solid var(--edge-hard);
+  display: flex;
+  font-size: 10px;
+  height: 14px;
+  justify-content: center;
+  line-height: 1;
+  position: absolute;
+  width: 14px;
+}
+
+.quest-node__mark--optional {
+  background: var(--mark-optional-face);
+  color: var(--mark-optional-text);
+  right: -5px;
+  top: -5px;
+}
+
+.quest-node__mark--diagnostic {
+  background: var(--mark-diagnostic-face);
+  bottom: -5px;
+  color: var(--mark-diagnostic-text);
+  right: -5px;
+}
+
+.quest-tip {
+  background: var(--surface-panel-solid);
+  border: 1px solid var(--edge-strong);
+  display: grid;
+  gap: 2px;
+  max-width: 230px;
+  padding: 5px 7px;
+  width: max-content;
+}
+
+.quest-tip__title {
+  color: var(--text-strong);
+  font-size: 12px;
+}
+
+.quest-tip__line {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.quest-tip__optional {
+  color: var(--accent-notice);
+  font-size: 11px;
+}
+
+.zoom-overview .quest-node__socket {
+  height: 74%;
+  width: 74%;
+}
+
+/* ----------------------------------------------------------- quest edges */
+
+.quest-edge__bed {
+  stroke: var(--ribbon-bed);
+  stroke-width: 8;
+}
+
+.quest-edge__rail {
+  stroke: var(--edge-rail, var(--ribbon-rail));
+  stroke-width: 6;
+}
+
+/*
+ * The in-game connector art is a repeated block, so the bright inner ribbon is
+ * cut into square segments over the continuous dark rail. The dash pattern is
+ * static geometry with no offset shift, so it never reads as motion.
+ */
+.quest-edge__flow {
+  stroke: var(--edge-flow, var(--ribbon-flow));
+  stroke-dasharray: 4 4;
+  stroke-linecap: butt;
+  stroke-width: 3;
+}
+
+.quest-edge__arrow path {
+  stroke: var(--edge-flow, var(--ribbon-flow));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.react-flow__edge.relation-neutral {
+  --edge-flow: var(--ribbon-flow-neutral);
+  --edge-rail: var(--ribbon-rail-neutral);
+}
+
+.react-flow__edge.relation-prerequisite {
+  --edge-flow: var(--ribbon-flow-prerequisite);
+  --edge-rail: var(--ribbon-rail-prerequisite);
+}
+
+.react-flow__edge.relation-dependent {
+  --edge-flow: var(--ribbon-flow-dependent);
+  --edge-rail: var(--ribbon-rail-dependent);
+}
+
+.react-flow__edge.relation-muted {
+  opacity: var(--ribbon-muted-opacity);
+}
+
+/* -------------------------------------------------------- resource icons */
+
+/*
+ * The resource hue arrives as an inline --icon-hue, so the sprite colours have
+ * to be composed here rather than in the token layer: a var() inside a custom
+ * property is substituted where that property is declared.
+ */
+.resource-icon {
+  --sprite-body: hsl(var(--icon-hue) var(--sprite-body-shade));
+  --sprite-dark: hsl(var(--icon-hue) var(--sprite-dark-shade));
+  --sprite-light: hsl(var(--icon-hue) var(--sprite-light-shade));
+  --sprite-accent: hsl(var(--icon-accent-hue) var(--sprite-accent-shade));
+
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  position: relative;
+}
+
+.resource-icon svg {
+  display: block;
+  height: 100%;
+  shape-rendering: crispEdges;
+  width: 100%;
+}
+
+.resource-icon--small {
+  height: 18px;
+  width: 18px;
+}
+
+.resource-icon--medium {
+  height: 24px;
+  width: 24px;
+}
+
+.resource-icon--large {
+  height: 34px;
+  width: 34px;
+}
+
+.sprite-top {
+  fill: var(--sprite-light);
+}
+
+.sprite-left {
+  fill: var(--sprite-body);
+}
+
+.sprite-right,
+.sprite-shade {
+  fill: var(--sprite-dark);
+}
+
+.sprite-accent {
+  fill: var(--sprite-accent);
+}
+
+.sprite-detail {
+  fill: var(--sprite-detail);
+  transform: translateX(calc(var(--icon-variant) * 0.3px));
+}
+
+.sprite-trunk {
+  fill: var(--sprite-trunk);
+}
+
+.sprite-check {
+  fill: var(--sprite-check);
+}
+
+/* Item slots reproduce the sunken bevel of an in-game inventory slot. */
+.item-slot {
+  align-items: center;
+  background: var(--slot-face);
+  border: 1px solid var(--edge-hard);
+  box-shadow:
+    inset 1px 1px 0 var(--slot-bevel-inner),
+    inset -1px -1px 0 var(--slot-bevel-outer);
+  display: inline-flex;
+  flex: none;
+  height: 28px;
+  justify-content: center;
+  position: relative;
+  width: 28px;
+}
+
+.item-slot--large {
+  height: 42px;
+  width: 42px;
+}
+
+.item-slot__count {
+  bottom: 0;
+  color: var(--text-strong);
+  font-size: 10px;
+  line-height: 1;
+  position: absolute;
+  right: 1px;
+  text-shadow: var(--pixel-shadow);
+}

@@ -1,0 +1,252 @@
+/*
+ * QuestSpec preview design tokens.
+ *
+ * Every colour the preview paints is declared exactly once here, as a semantic
+ * token, for both themes. Component rules in styles.css consume these tokens
+ * and never name a theme colour directly, so a theme is a data change in this
+ * file rather than a second copy of the stylesheet.
+ *
+ * `data-theme` on the document element selects a block. The dark block is also
+ * the unqualified default, so a document that never received the attribute
+ * still paints the FTB Quests night-time GUI instead of unstyled colours.
+ *
+ * Both themes describe the same in-game GUI: flat fills, hard one-pixel edges,
+ * bevelled widgets and item slots, and static segmented dependency ribbons.
+ * The light theme is that same GUI lit like carved stone, not a web dashboard.
+ */
+
+:root {
+  /* Minecraft chat-code palette: the dark theme's source of truth. */
+  --mc-white: #ffffff;
+  --mc-gray: #aaaaaa;
+  --mc-green: #55ff55;
+  --mc-aqua: #55ffff;
+  --mc-yellow: #ffff55;
+  --mc-gold: #ffaa00;
+  --mc-red: #ff5555;
+
+  --font-pixel:
+    'Minecraft', 'Monocraft', 'Pixel Operator', 'PixelOperator', 'Silkscreen', 'Press Start 2P',
+    'Galmuri11', 'Terminus', 'Unifont', 'DejaVu Sans Mono', 'Noto Sans Mono', 'Liberation Mono',
+    'Noto Sans KR', ui-monospace, monospace;
+
+  --rail-width: 268px;
+  --inspector-width: 340px;
+
+  font-family: var(--font-pixel);
+  font-synthesis: none;
+}
+
+/* ------------------------------------------------------------ dark theme */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Text and the hard bitmap drop shadow. */
+  --text-primary: #dcdcdc;
+  --text-muted: var(--mc-gray);
+  --text-faint: #6c6c70;
+  --text-strong: var(--mc-white);
+  --pixel-shadow: 1px 1px 0 rgba(0, 0, 0, 0.95);
+  --pixel-shadow-strong: 2px 2px 0 rgba(0, 0, 0, 0.95);
+
+  /* Surfaces. */
+  --surface-world: #17191b;
+  --surface-panel: rgba(10, 10, 12, 0.88);
+  --surface-panel-solid: #0c0c0e;
+  --surface-sunken: rgba(0, 0, 0, 0.42);
+  --surface-canvas: rgba(0, 0, 0, 0.24);
+  --surface-toolbar: rgba(255, 255, 255, 0.05);
+  --surface-toolbar-highlight: rgba(255, 255, 255, 0.07);
+  --surface-row: rgba(255, 255, 255, 0.03);
+  --surface-status: rgba(6, 6, 8, 0.82);
+  --surface-scrim: rgba(0, 0, 0, 0.72);
+  --surface-input: #08080a;
+  --surface-scroll-track: #08080a;
+
+  /* Edges. */
+  --edge-hard: #000000;
+  --edge-strong: #6f6f74;
+  --edge-soft: #2c2c30;
+
+  /* Bevelled widgets, sunken fields, item slots, and tabs. */
+  --control-face: #4b4b51;
+  --control-face-hover: #5b6a5b;
+  --control-bevel-light: #83838a;
+  --control-bevel-dark: #212126;
+  --control-text-hover: var(--mc-white);
+  --input-bevel-inner: #303035;
+  --input-bevel-outer: #000000;
+  --slot-face: #1a1a1d;
+  --slot-bevel-inner: #050506;
+  --slot-bevel-outer: #55555a;
+  --tab-face: #1c1c20;
+  --tab-bevel: #3a3a40;
+  --tab-face-selected: #33333a;
+  --tab-bevel-selected: #62626a;
+  --focus-ring: var(--mc-white);
+
+  /* Accents. */
+  --accent-info: var(--mc-aqua);
+  --accent-info-fill: rgba(85, 255, 255, 0.12);
+  --accent-info-edge: rgba(85, 255, 255, 0.55);
+  --accent-link: var(--mc-green);
+  --accent-link-fill: rgba(85, 255, 85, 0.09);
+  --accent-link-edge: rgba(85, 255, 85, 0.35);
+  --accent-highlight: var(--mc-yellow);
+  --accent-warning: var(--mc-yellow);
+  --accent-notice: var(--mc-gold);
+  --accent-notice-fill: rgba(255, 170, 0, 0.16);
+  --accent-danger: var(--mc-red);
+
+  /*
+   * Quest graph semantics. The preview has no player-progress data, so its
+   * resting state is deliberately neutral. Colour appears only while tracing
+   * the prerequisites and dependents of an active quest.
+   */
+  --node-frame: #8f8c90;
+  --node-frame-hover: var(--mc-white);
+  --node-face: rgba(35, 35, 39, 0.94);
+  --node-frame-prerequisite: #76b8bc;
+  --node-plate-prerequisite: rgba(70, 133, 138, 0.12);
+  --node-plate-edge-prerequisite: rgba(118, 184, 188, 0.38);
+  --node-frame-dependent: #c1b26d;
+  --node-plate-dependent: rgba(150, 132, 61, 0.1);
+  --node-plate-edge-dependent: rgba(193, 178, 109, 0.36);
+  --node-frame-selected: var(--mc-white);
+  --node-face-selected: #454348;
+  --node-plate-selected: rgba(174, 172, 180, 0.12);
+  --node-plate-edge-selected: #8f8c94;
+  --node-dimmed-opacity: 0.34;
+  --mark-optional-face: #4a3a10;
+  --mark-optional-text: var(--mc-gold);
+  --mark-diagnostic-face: #3a2425;
+  --mark-diagnostic-text: #d9847f;
+
+  /* Resting ribbons recede; relation colours appear only around an active quest. */
+  --ribbon-bed: #181719;
+  --ribbon-rail: #62555a;
+  --ribbon-flow: #aa9299;
+  --ribbon-rail-neutral: #62555a;
+  --ribbon-flow-neutral: #aa9299;
+  --ribbon-rail-prerequisite: #365f63;
+  --ribbon-flow-prerequisite: #76b8bc;
+  --ribbon-rail-dependent: #675f38;
+  --ribbon-flow-dependent: #c1b26d;
+  --ribbon-muted-opacity: 0.32;
+
+  /*
+   * Resource sprites take their hue from the resource and their shading from
+   * the theme. Only the shading lives here: a var() inside a custom property is
+   * substituted where the property is declared, so the hsl() call itself has to
+   * stay on the element that carries --icon-hue.
+   */
+  --sprite-body-shade: 34% 46%;
+  --sprite-dark-shade: 38% 24%;
+  --sprite-light-shade: 40% 66%;
+  --sprite-accent-shade: 52% 54%;
+  --sprite-detail: rgba(0, 0, 0, 0.4);
+  --sprite-trunk: #6b4a22;
+  --sprite-check: var(--mc-green);
+}
+
+/* ----------------------------------------------------------- light theme */
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  /* Dark ink with a one-pixel highlight reads as carved GUI lettering. */
+  --text-primary: #22242a;
+  --text-muted: #4c4f56;
+  --text-faint: #6c6f77;
+  --text-strong: #101218;
+  --pixel-shadow: 1px 1px 0 rgba(255, 255, 255, 0.85);
+  --pixel-shadow-strong: 2px 2px 0 rgba(255, 255, 255, 0.85);
+
+  /* Surfaces: stone-grey world, pale panels, brightened canvas. */
+  --surface-world: #cdd0c8;
+  --surface-panel: rgba(240, 240, 233, 0.92);
+  --surface-panel-solid: #f1f1ea;
+  --surface-sunken: rgba(0, 0, 0, 0.06);
+  --surface-canvas: rgba(255, 255, 255, 0.24);
+  --surface-toolbar: rgba(0, 0, 0, 0.05);
+  --surface-toolbar-highlight: rgba(255, 255, 255, 0.75);
+  --surface-row: rgba(0, 0, 0, 0.04);
+  --surface-status: rgba(238, 238, 230, 0.9);
+  --surface-scrim: rgba(24, 24, 22, 0.5);
+  --surface-input: #fcfcf6;
+  --surface-scroll-track: #dfdfd6;
+
+  /* Edges stay hard and dark so the pixel outline survives the light fills. */
+  --edge-hard: #2b2b28;
+  --edge-strong: #74746d;
+  --edge-soft: #b7b7ad;
+
+  --control-face: #c7c7bf;
+  --control-face-hover: #b5c5af;
+  --control-bevel-light: #f2f2ea;
+  --control-bevel-dark: #8a8a82;
+  --control-text-hover: #101218;
+  --input-bevel-inner: #a9a9a0;
+  --input-bevel-outer: #ffffff;
+  --slot-face: #dcdcd3;
+  --slot-bevel-inner: #a5a59c;
+  --slot-bevel-outer: #ffffff;
+  --tab-face: #d5d5cc;
+  --tab-bevel: #f4f4ec;
+  --tab-face-selected: #f1f1ea;
+  --tab-bevel-selected: #ffffff;
+  --focus-ring: #101218;
+
+  /* Chat-code hues darkened until they carry text contrast on pale panels. */
+  --accent-info: #0b6a74;
+  --accent-info-fill: rgba(11, 106, 116, 0.12);
+  --accent-info-edge: rgba(11, 106, 116, 0.55);
+  --accent-link: #1c6f24;
+  --accent-link-fill: rgba(28, 111, 36, 0.1);
+  --accent-link-edge: rgba(28, 111, 36, 0.4);
+  --accent-highlight: #7a5c00;
+  --accent-warning: #7a5c00;
+  --accent-notice: #8a5a00;
+  --accent-notice-fill: rgba(190, 126, 0, 0.16);
+  --accent-danger: #a8201f;
+
+  --node-frame: #747572;
+  --node-frame-hover: #101218;
+  --node-face: rgba(250, 250, 244, 0.94);
+  --node-frame-prerequisite: #347c82;
+  --node-plate-prerequisite: rgba(52, 124, 130, 0.08);
+  --node-plate-edge-prerequisite: rgba(52, 124, 130, 0.3);
+  --node-frame-dependent: #887b35;
+  --node-plate-dependent: rgba(136, 123, 53, 0.08);
+  --node-plate-edge-dependent: rgba(136, 123, 53, 0.3);
+  --node-frame-selected: #16181d;
+  --node-face-selected: #deded7;
+  --node-plate-selected: rgba(71, 75, 84, 0.1);
+  --node-plate-edge-selected: #73777d;
+  --node-dimmed-opacity: 0.42;
+  --mark-optional-face: #f0cf87;
+  --mark-optional-text: #573900;
+  --mark-diagnostic-face: #ecd8d5;
+  --mark-diagnostic-text: #8b3c38;
+
+  --ribbon-bed: #d0ccc4;
+  --ribbon-rail: #907d83;
+  --ribbon-flow: #b69ca4;
+  --ribbon-rail-neutral: #907d83;
+  --ribbon-flow-neutral: #b69ca4;
+  --ribbon-rail-prerequisite: #416f73;
+  --ribbon-flow-prerequisite: #65a7ab;
+  --ribbon-rail-dependent: #71683c;
+  --ribbon-flow-dependent: #a99b53;
+  --ribbon-muted-opacity: 0.45;
+
+  --sprite-body-shade: 38% 42%;
+  --sprite-dark-shade: 42% 24%;
+  --sprite-light-shade: 42% 60%;
+  --sprite-accent-shade: 54% 46%;
+  --sprite-detail: rgba(0, 0, 0, 0.35);
+  --sprite-trunk: #6b4a22;
+  --sprite-check: #1c7a24;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SnbtTag } from '../../src/snbt/ast.ts';
+import type { SnbtTag } from '../../packages/core/src/snbt/ast.ts';
 import {
   snbtBoolean,
   snbtCompound,
@@ -8,10 +8,10 @@ import {
   snbtList,
   snbtLong,
   snbtString,
-} from '../../src/snbt/build.ts';
-import { snbtSemanticallyEqual } from '../../src/snbt/compare.ts';
-import { parseSnbt } from '../../src/snbt/parser.ts';
-import { writeSnbt } from '../../src/snbt/writer.ts';
+} from '../../packages/core/src/snbt/build.ts';
+import { snbtSemanticallyEqual } from '../../packages/core/src/snbt/compare.ts';
+import { parseSnbt } from '../../packages/core/src/snbt/parser.ts';
+import { writeSnbt } from '../../packages/core/src/snbt/writer.ts';
 
 describe('generated SNBT regression inputs', () => {
   it('round-trips deterministic generated typed trees', () => {

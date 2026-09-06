@@ -4,9 +4,10 @@ import { globalIgnores } from 'eslint/config';
 
 export default retn0(
   {
-    environments: ['node'],
+    environments: ['node', 'browser'],
     perfectionist: true,
+    react: true,
   },
   eslintConfigOxlint,
-  globalIgnores(['coverage/**', 'dist/**']),
+  globalIgnores(['**/coverage/**', '**/dist/**']),
 );

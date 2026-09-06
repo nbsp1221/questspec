@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateQuestbook } from '../../src/validation/questbook.ts';
+import { validateQuestbook } from '../../packages/core/src/validation/questbook.ts';
 import { createQuestbookFixture } from '../helpers/questbook.ts';
 
 describe('validateQuestbook', () => {
